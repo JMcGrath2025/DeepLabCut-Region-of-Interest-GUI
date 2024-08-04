@@ -94,7 +94,9 @@ This is the main function of this program and this is the work flow of using it.
 ![Video Segment](https://github.com/user-attachments/assets/c21a2e0e-54c0-4775-a221-e4a55acabe53)
 
 7) Switch the mode of the program to the desired mode that you would like to analyze in
+   
    A) Percentage Mode:
+   
      1) Percentage mode will be the default mode selected when first loading up the program.
      2) If the program was switched to a different mode click "Percentage Mode" to switch back to this mode
      3) Press the "Change Percent" button to change the percentage of body parts that must appear in the region of interest before it starts counting the animal as appearing in the region of interest
@@ -102,12 +104,16 @@ This is the main function of this program and this is the work flow of using it.
      ![Exclude](https://github.com/user-attachments/assets/103b7e2a-4eba-440f-bede-ceeb0fe1dbe7)
 
    B) Body Part Mode:
+   
      1) Switch to body part mode by pressing the "Body Part Mode" button
      2) When prompted click the specific body part that you would like to track
+        
    C) Any Part Mode:
+
      1) Switch to this mode by pressing "Any Part Mode"
      2) Exclude any body parts that you do not want to analyze
-8) Once you selected all the details and the mode that will be used there are two different ways to start processing
+        
+9) Once you selected all the details and the mode that will be used there are two different ways to start processing
    A) Pressing the "Process" button
      1) Once you have all the details selected you can press the process button to just get the ouput from the current video only
      ![Process single](https://github.com/user-attachments/assets/ed594e51-bf9c-4149-bf8b-cb48f67138c5)
