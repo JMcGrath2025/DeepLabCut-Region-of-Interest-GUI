@@ -76,17 +76,17 @@ This is the main function of this program and this is the work flow of using it.
 
 1) Load the video you want to analyze by using the "Open Video" button (.mp4, .mov, .avi) 
 2) Use the scroll bar on the bottom to select a frame to load onto the canvas
-   a) Make sure that it is a clear view of the regions of interest you want to label
+   1) Make sure that it is a clear view of the regions of interest you want to label
    ![OpenVideo](https://github.com/user-attachments/assets/1a95a8f4-31bf-42ab-bdbd-ec5db46b05dd)
 
 3) Load the csv of h5 tracking file from DeepLabCut using the "Open CSV" button
 ![OpenCSV](https://github.com/user-attachments/assets/19197a77-c271-4fbd-8e31-ae4e67080289)
 
 4) Then in order to draw and label the ROI you need to do a few different things
-   a) Use left click to plot a point over top of the video frame (plotting two points will draw a line between them)
-   b) Use right click to complete the region of interest (Once at least three points are plotted right click will complete the shape)
-   c) After using right a popup will show asking you to name the region of interest
-   d) If a different video has the same ROIs and was filmed at the same angle you can save the ROI to use again by using the "Save ROI" button
+   1) Use left click to plot a point over top of the video frame (plotting two points will draw a line between them)
+   2) Use right click to complete the region of interest (Once at least three points are plotted right click will complete the shape)
+   3) After using right a popup will show asking you to name the region of interest
+   4) If a different video has the same ROIs and was filmed at the same angle you can save the ROI to use again by using the "Save ROI" button
    ![Draw Shapes](https://github.com/user-attachments/assets/37176c95-da2d-4c94-95ed-98e915cd9f15)
 
 5) In the case that a user already has defined the ROIs you can load them with the "Load ROI" button to display them on the canvas.
@@ -94,25 +94,25 @@ This is the main function of this program and this is the work flow of using it.
 ![Video Segment](https://github.com/user-attachments/assets/c21a2e0e-54c0-4775-a221-e4a55acabe53)
 
 7) Switch the mode of the program to the desired mode that you would like to analyze in
-   a) Percentage Mode:
+   1) Percentage Mode:
      1) Percentage mode will be the default mode selected when first loading up the program.
      2) If the program was switched to a different mode click "Percentage Mode" to switch back to this mode
      3) Press the "Change Percent" button to change the percentage of body parts that must appear in the region of interest before it starts counting the animal as appearing in the region of interest
      4) Exclude any body parts that you would like to not analyze using the "Exclude Body Parts" button.
      ![Exclude](https://github.com/user-attachments/assets/103b7e2a-4eba-440f-bede-ceeb0fe1dbe7)
 
-   b) Body Part Mode:
+   2) Body Part Mode:
      1) Switch to body part mode by pressing the "Body Part Mode" button
      2) When prompted click the specific body part that you would like to track
-   c) Any Part Mode:
+   3) Any Part Mode:
      1) Switch to this mode by pressing "Any Part Mode"
      2) Exclude any body parts that you do not want to analyze
 8) Once you selected all the details and the mode that will be used there are two different ways to start processing
-   a) Pressing the "Process" button
+   1) Pressing the "Process" button
      1) Once you have all the details selected you can press the process button to just get the ouput from the current video only
      ![Process single](https://github.com/user-attachments/assets/ed594e51-bf9c-4149-bf8b-cb48f67138c5)
 
-   b) Saving the details then processing a batch of details at once
+   1) Saving the details then processing a batch of details at once
      1) Once the details are selected and it is ready to be processed click the "Save Details" button
      2) A popup will appear that will show the list of videos and segments of videos to be processed
      3) You can use the "Delete" button to select a set of details and delete them from the list so they do not get processed.
