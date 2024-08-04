@@ -34,6 +34,15 @@ This is the main purpose of this program and there are a few ways that this is d
 
 -The final way to track the amount of time spent in a region of interest is through any part mode. You can switch to this mode by pressing "Any Part Mode". This mode tracks the time spent in a region when any part of the animal passes into the zone.
 
+### Plotting 
+
+This program also allows the user to plot data using MatLab plots to display the movment in the video of a specific body part. There are options to display the regions of interest over the plot, display the plot over the video, zoom in on the plot to get a clearer picture, and plot a bounding box that is a box around all of the points plotted. 
+
+### Pathing
+
+This feature allows you to load the video and tracking data file and press "Pathing" to see a visual of the path an animal takes during the video. 
+![pathing](https://github.com/user-attachments/assets/28480b56-b5e5-4e4b-b71b-0c2277a34372)
+
 ### Batch Processing
 
 This feature allows a user to select all the details of how they would like to analyze a video, for example what body parts to exclude, what regions of interest to use, the video and tracking data to be analyzed, and any other details that the user changes and save them to a list to be processed all at one time. So for example if you want to analyze multiple different segments from multiple different videos or multiple segments from the same video you can select the details to be processed but instead of pressing the "Process" button insetead you can press the "Save Details" button to save the details to a list. Then once you have the details of what you want to process you can process everything in a batch through pressing "Process Details" and when it is done you have the option to save the output of time spent in each region in each of the videos that you saved the details for.
@@ -57,14 +66,6 @@ This feature allows for the selection of a specific segment to analyze. So you c
 ### Loading of Video and Tracking Data
 
 Through keeping the video and tracking data loaded you can analyze different parts of the same video by changing the segment that will be analyzed, body parts to be excluded or the mode in which it will analyze the tracking data in.
-
-### Plotting 
-
-This program also allows the user to plot data using MatLab plots to display the movment in the video of a specific body part. There are options to display the regions of interest over the plot, display the plot over the video, zoom in on the plot to get a clearer picture, and plot a bounding box that is a box around all of the points plotted. 
-
-### Pathing
-
-This feature allows you to load the video and tracking data file and press "Pathing" to see a visual of the path an animal takes during the video. 
 
 ## Usage
 
@@ -126,6 +127,35 @@ This is the main function of this program and this is the workflow of using it.
       4. Then click "Process Details" to process the whole batch of details.
       5. Save the output to a CSV file using the file dialog popup.
          ![Process Multiple](https://github.com/user-attachments/assets/6fe435f1-881c-48ec-99ce-e7ac8697ac2a)
+
+### Plotting
+
+This part of the program can show a graph very quickly using the details selected through using the program.
+
+1. Follow steps 1-6 in the instructions for tracking time spent in ROIs selecting the details like the video segment, and ROI's
+2. Click the "Plot" button
+3. In the popup click the body part that you would like to plot
+4. In the next popup click the checkboxes to determine what will be shown in the plot
+   A. Select "Show Bounding Box" to show the total area in pixels the points take up.
+   B. Select "Show ROIs" to show the ROIs on the plot
+   C. Select "Show Area Under Curve (AUC)" to show the area under curve on the plot
+   D. Select "Square Graph" to show the data in a square aspect ratio instead of rectangular
+   E. Select "Plot Over Video" to plot the data over the video
+   C. Select "Zoom In" to zoom in on the plotted data on the video (Zoom Radius is the radius from the middle of the points)
+5. Click on "Apply" to see the plot popup window
+6. Click download to download a picture of the plot
+
+### Pathing
+
+This part of the program is simply a way to show the path an animal takes using the DeepLabCut tracking data
+
+1. Follow steps 1-3 in the first set of instructions
+2. Select the segment of the video you would like to view the pathing of
+3. Click the "Pathing" button
+4. Select one or more of the body parts to show the pathing of
+5. Use the "D" key to move the move the slideshow forward
+6. Use the "A" key to move the slideshow backwards
+7. Use the space bar to pause the slideshow
 
 
 
