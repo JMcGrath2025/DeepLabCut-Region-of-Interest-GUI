@@ -68,64 +68,64 @@ This feature allows you to load the video and tracking data file and press "Path
 
 ## Usage
 
-This progam is very easy to use but there are a few different ways to use it. 
+This program is very easy to use but there are a few different ways to use it. 
 
 ### Tracking Time Spent in ROI
 
-This is the main function of this program and this is the work flow of using it.
+This is the main function of this program and this is the workflow of using it.
 
-1) Load the video you want to analyze by using the "Open Video" button (.mp4, .mov, .avi) 
-2) Use the scroll bar on the bottom to select a frame to load onto the canvas
-   A) Make sure that it is a clear view of the regions of interest you want to label
+1. Load the video you want to analyze by using the "Open Video" button (.mp4, .mov, .avi).
+2. Use the scroll bar on the bottom to select a frame to load onto the canvas.
+   - Make sure that it is a clear view of the regions of interest you want to label.
    ![OpenVideo](https://github.com/user-attachments/assets/1a95a8f4-31bf-42ab-bdbd-ec5db46b05dd)
 
-3) Load the csv of h5 tracking file from DeepLabCut using the "Open CSV" button
-![OpenCSV](https://github.com/user-attachments/assets/19197a77-c271-4fbd-8e31-ae4e67080289)
+3. Load the CSV or h5 tracking file from DeepLabCut using the "Open CSV" button.
+   ![OpenCSV](https://github.com/user-attachments/assets/19197a77-c271-4fbd-8e31-ae4e67080289)
 
-4) Then in order to draw and label the ROI you need to do a few different things
-   1) Use left click to plot a point over top of the video frame (plotting two points will draw a line between them)
-   2) Use right click to complete the region of interest (Once at least three points are plotted right click will complete the shape)
-   3) After using right a popup will show asking you to name the region of interest
-   4) If a different video has the same ROIs and was filmed at the same angle you can save the ROI to use again by using the "Save ROI" button
+4. Then, to draw and label the ROI, you need to do a few different things:
+   1. Use left-click to plot a point over the video frame (plotting two points will draw a line between them).
+   2. Use right-click to complete the region of interest (Once at least three points are plotted, right-click will complete the shape).
+   3. After using right-click, a popup will show asking you to name the region of interest.
+   4. If a different video has the same ROIs and was filmed at the same angle, you can save the ROI to use again by using the "Save ROI" button.
    ![Draw Shapes](https://github.com/user-attachments/assets/37176c95-da2d-4c94-95ed-98e915cd9f15)
 
-5) In the case that a user already has defined the ROIs you can load them with the "Load ROI" button to display them on the canvas.
-6) Select the segment of the video to analyze (if no segment is selected it will analyze the whole video)
-![Video Segment](https://github.com/user-attachments/assets/c21a2e0e-54c0-4775-a221-e4a55acabe53)
+5. In the case that a user already has defined the ROIs, you can load them with the "Load ROI" button to display them on the canvas.
+6. Select the segment of the video to analyze (if no segment is selected, it will analyze the whole video).
+   ![Video Segment](https://github.com/user-attachments/assets/c21a2e0e-54c0-4775-a221-e4a55acabe53)
 
-7) Switch the mode of the program to the desired mode that you would like to analyze in
+7. Switch the mode of the program to the desired mode that you would like to analyze in:
    
-   A) Percentage Mode:
+   A. Percentage Mode:
    
-     1) Percentage mode will be the default mode selected when first loading up the program.
-     2) If the program was switched to a different mode click "Percentage Mode" to switch back to this mode
-     3) Press the "Change Percent" button to change the percentage of body parts that must appear in the region of interest before it starts counting the animal as appearing in the region of interest
-     4) Exclude any body parts that you would like to not analyze using the "Exclude Body Parts" button.
-     ![Exclude](https://github.com/user-attachments/assets/103b7e2a-4eba-440f-bede-ceeb0fe1dbe7)
+      1. Percentage mode will be the default mode selected when first loading up the program.
+      2. If the program was switched to a different mode, click "Percentage Mode" to switch back to this mode.
+      3. Press the "Change Percent" button to change the percentage of body parts that must appear in the region of interest before it starts counting the animal as appearing in the region of interest.
+      4. Exclude any body parts that you would like to not analyze using the "Exclude Body Parts" button.
+         ![Exclude](https://github.com/user-attachments/assets/103b7e2a-4eba-440f-bede-ceeb0fe1dbe7)
 
-   B) Body Part Mode:
+   B. Body Part Mode:
    
-     1) Switch to body part mode by pressing the "Body Part Mode" button
-     2) When prompted click the specific body part that you would like to track
+      1. Switch to body part mode by pressing the "Body Part Mode" button.
+      2. When prompted, click the specific body part that you would like to track.
         
-   C) Any Part Mode:
+   C. Any Part Mode:
 
-     1) Switch to this mode by pressing "Any Part Mode"
-     2) Exclude any body parts that you do not want to analyze
+      1. Switch to this mode by pressing "Any Part Mode".
+      2. Exclude any body parts that you do not want to analyze.
         
-9) Once you selected all the details and the mode that will be used there are two different ways to start processing
-   A) Pressing the "Process" button
-     1) Once you have all the details selected you can press the process button to just get the ouput from the current video only
-     ![Process single](https://github.com/user-attachments/assets/ed594e51-bf9c-4149-bf8b-cb48f67138c5)
+9. Once you have selected all the details and the mode that will be used, there are two different ways to start processing:
+   
+   A. Pressing the "Process" button:
+      1. Once you have all the details selected, you can press the "Process" button to get the output from the current video only.
+         ![Process single](https://github.com/user-attachments/assets/ed594e51-bf9c-4149-bf8b-cb48f67138c5)
 
-   B) Saving the details then processing a batch of details at once
-     1) Once the details are selected and it is ready to be processed click the "Save Details" button
-     2) A popup will appear that will show the list of videos and segments of videos to be processed
-     3) You can use the "Delete" button to select a set of details and delete them from the list so they do not get processed.
-     4) Then click "Process Details" to process the whole batch of details
-     5) Save the output to a csv file using the file dialog popup
-     ![Process Multiple](https://github.com/user-attachments/assets/6fe435f1-881c-48ec-99ce-e7ac8697ac2a)
-
+   B. Saving the details then processing a batch of details at once:
+      1. Once the details are selected and it is ready to be processed, click the "Save Details" button.
+      2. A popup will appear that will show the list of videos and segments of videos to be processed.
+      3. You can use the "Delete" button to select a set of details and delete them from the list so they do not get processed.
+      4. Then click "Process Details" to process the whole batch of details.
+      5. Save the output to a CSV file using the file dialog popup.
+         ![Process Multiple](https://github.com/user-attachments/assets/6fe435f1-881c-48ec-99ce-e7ac8697ac2a)
 
 
 
