@@ -113,11 +113,11 @@ This is the main function of this program and this is the work flow of using it.
      ![Process single](https://github.com/user-attachments/assets/ed594e51-bf9c-4149-bf8b-cb48f67138c5)
 
    b) Saving the details then processing a batch of details at once
-     2) Once the details are selected and it is ready to be processed click the "Save Details" button
-     3) A popup will appear that will show the list of videos and segments of videos to be processed
-     4) You can use the "Delete" button to select a set of details and delete them from the list so they do not get processed.
-     5) Then click "Process Details" to process the whole batch of details
-     6) Save the output to a csv file using the file dialog popup
+     1) Once the details are selected and it is ready to be processed click the "Save Details" button
+     2) A popup will appear that will show the list of videos and segments of videos to be processed
+     3) You can use the "Delete" button to select a set of details and delete them from the list so they do not get processed.
+     4) Then click "Process Details" to process the whole batch of details
+     5) Save the output to a csv file using the file dialog popup
      ![Process Multiple](https://github.com/user-attachments/assets/6fe435f1-881c-48ec-99ce-e7ac8697ac2a)
 
 
