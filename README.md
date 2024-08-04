@@ -17,3 +17,5 @@ You can download the latest release in .exe form from the release section to the
 
 ## Features
 
+### Tracking Time Spent in Region of Interest
+
