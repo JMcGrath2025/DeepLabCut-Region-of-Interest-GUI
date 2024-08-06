@@ -95,4 +95,5 @@ bin/
 *.zip
 *.tar.gz
 *.iso
-*.jar.*exe
+*.jar
+*.spec
