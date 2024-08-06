@@ -87,3 +87,12 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# Exclude specific files or directories
+bin/
+*.exe
+*.dll
+*.zip
+*.tar.gz
+*.iso
+*.jar
