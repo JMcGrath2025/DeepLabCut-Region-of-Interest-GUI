@@ -87,7 +87,7 @@ class DataProcessor:
             self.app.previous_excluded_body_parts = self.app.excluded_body_parts.copy()
             
             #popup that the file that was loaded
-            messagebox.showinfo("File Loaded", f"Successfully loaded file: {os.path.basename(file_path)}")
+            self.app.custom_messagebox("File Loaded", f"Successfully loaded file: {os.path.basename(file_path)}", bg_color='#19232D', fg_color='white')
     
     
     def find_columns(self, body_part):
@@ -148,58 +148,52 @@ class DataProcessor:
         if not hasattr(self.app, 'start_frame') or not hasattr(self.app, 'end_frame'):
             print("Error: No segment selected.")
             return
-        
+    
         #create dictionary to store frames that appear within the shapes 
         frames_in_shapes = {name: set() for name in self.app.shape_drawer.shapes}
         
-        #get the set of unique body parts
-        unique_body_parts = set(col[1] for col in self.app.data.columns if col[2] in ['x', 'y'])
-        #find the number of body parts
-        num_body_parts = len(unique_body_parts)
+        #extract columns directly
+        body_parts_columns = [(col[0], col[1], col[2]) for col in self.app.data.columns if col[2] in ['x', 'y']]
+        num_body_parts = len(set(col[1] for col in body_parts_columns))
         
         #initialize progress bar
-        self.app.progress_bar(self.app.end_frame - self.app.start_frame + 1) #account for the initial frame being 0
+        self.app.progress_bar(self.app.end_frame - self.app.start_frame + 1) # account for the initial frame being 0
         
         #loop through each row of the data frame
         for index, row in self.app.data.iterrows():
             #skip the frames not in the selected segment
             if index < self.app.start_frame or index > self.app.end_frame:
                 continue
+            
             #loop through each defined ROI
             for shape_name, polygon in self.app.shape_drawer.shapes.items():
-                #initilize counters and flags
-                in_shape_count = 0 #count of frames in shape
+                #initialize counters and flags
+                in_shape_count = 0 # count of frames in shape
                 specific_part_in_shape = False
                 any_part_in_shape = False
                 
-                #loop through the body parts in the set of body parts
-                for body_part in unique_body_parts: #skip exluded parts
-                    if body_part in self.app.excluded_body_parts:
-                        continue
-                    #find columns for each body part in the set
-                    try:
-                        x_col, y_col, likelihood_col = self.find_columns(body_part) #call find columns to for each body part
-                    except ValueError as e:
-                        print(e)
+                #loop through the body parts columns
+                for col in body_parts_columns:
+                    if col[1] in self.app.excluded_body_parts:
                         continue
                     
                     #get x y and likelihood values for the current row
-                    x = row[x_col]
-                    y = row[y_col]
-                    likelihood = row[likelihood_col]
+                    x = row[(col[0], col[1], 'x')]
+                    y = row[(col[0], col[1], 'y')]
+                    likelihood = row[(col[0], col[1], 'likelihood')]
                     
                     #check to make sure x and y have values
                     if pd.notna(x) and pd.notna(y):
                         #scale the coordinates
                         scaled_x, scaled_y = self.scale_coordinates(x, y)
-                        #create a poiont using the x and y
+                        #create a point using the x and y
                         point = Point(scaled_x, scaled_y)
                         #if the defined ROI contains the point 
                         if polygon.contains(point):
                             #add one to the frames in ROI
                             in_shape_count += 1
                             #check for specific or any part mode to change flag
-                            if self.app.track_mode == 'specific' and body_part == self.app.specific_body_part:
+                            if self.app.track_mode == 'specific' and col[1] == self.app.specific_body_part:
                                 specific_part_in_shape = True
                             if self.app.track_mode == 'any_part' and likelihood >= 0.99: #for any part make sure it has a 99% likelihood
                                 any_part_in_shape = True
@@ -211,8 +205,10 @@ class DataProcessor:
                     frames_in_shapes[shape_name].add(index)
                 elif self.app.track_mode == 'any_part' and any_part_in_shape:
                     frames_in_shapes[shape_name].add(index)
+            
             #update the progress bar
             self.app.update_progress(index - self.app.start_frame + 1)
+        
         #update the labels to show the time spent in each shape.
         for shape_name, frames in frames_in_shapes.items():
             total_time_in_shape = len(frames) * self.app.frame_duration
@@ -230,10 +226,10 @@ class DataProcessor:
         current_frame_index = self.app.start_frame
         playing = False
         direction = 1
-        frame_increment = 5  # Increase the increment for faster playback
+        frame_increment = 5  #increase the increment for faster playback
         frame_delay = int(1000 / self.app.fps / 5)
         
-        body_part_popup = Toplevel(self.app.root)
+        body_part_popup = Toplevel(self.app.root, bg='#19232D')
         body_part_popup.title("Select Body Parts for Slideshow")
         body_part_popup.geometry("250x250")
         body_part_popup.update_idletasks()
@@ -256,15 +252,15 @@ class DataProcessor:
             else:
                 messagebox.showerror("Error", "No body part selected.")
         
-        frame = tk.Frame(body_part_popup)
+        frame = tk.Frame(body_part_popup, bg='#19232D')
         frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
         
-        listbox = Listbox(frame, selectmode=tk.MULTIPLE)
+        listbox = Listbox(frame, selectmode=tk.MULTIPLE, bg="#455364", fg="white", bd=0, highlightthickness=0)
         for part in self.app.body_parts:
             listbox.insert(tk.END, part)
         listbox.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
-        select_button = tk.Button(frame, text="Select", command=on_select)
+        select_button = self.app.create_rounded_button(frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Select", command=on_select)
         select_button.pack(side=tk.BOTTOM, pady=10)
         
         body_part_popup.mainloop()
@@ -390,7 +386,7 @@ class DataProcessor:
             if not hasattr(self.app, 'end_frame') or self.app.end_frame is None:
                 self.app.end_frame = self.app.total_frames - 1
     
-            body_part_popup = Toplevel(self.app.root)
+            body_part_popup = Toplevel(self.app.root, bg='#19232D')
             body_part_popup.title("Select Body Part")
             body_part_popup.geometry("250x250")
             body_part_popup.update_idletasks()
@@ -407,22 +403,22 @@ class DataProcessor:
                 else:
                     messagebox.showerror("Error", "No body part selected.")
     
-            frame = tk.Frame(body_part_popup)
+            frame = tk.Frame(body_part_popup, bg='#19232D')
             frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
     
-            listbox = Listbox(frame, selectmode=tk.SINGLE)
+            listbox = Listbox(frame, selectmode=tk.SINGLE, bg='#455364', fg='white', bd=0, highlightthickness=0 )
             for part in self.app.body_parts:
                 listbox.insert(tk.END, part)
             listbox.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
     
-            select_button = tk.Button(frame, text="Select", command=on_select)
+            select_button = self.app.create_rounded_button(frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Select", command=on_select)
             select_button.pack(side=tk.BOTTOM, pady=10)
     
             body_part_popup.mainloop()
     
     def process_body_part(self, body_part):
         x_col, y_col, likelihood_col = self.find_columns(body_part)
-    
+        
         filtered_df = self.app.data.loc[
             (self.app.data.index >= self.app.start_frame) & (self.app.data.index <= self.app.end_frame) &
             (self.app.data[x_col].abs() > 1e-5) & (self.app.data[y_col].abs() > 1e-5) &
@@ -430,86 +426,80 @@ class DataProcessor:
             (pd.notna(self.app.data[x_col])) & (pd.notna(self.app.data[y_col])) &
             (self.app.data[likelihood_col] >= .75)
         ]
-    
+        
         Q1_x = filtered_df[x_col].quantile(0.25)
         Q3_x = filtered_df[x_col].quantile(0.75)
         IQR_x = Q3_x - Q1_x
-    
+        
         Q1_y = filtered_df[y_col].quantile(0.25)
         Q3_y = filtered_df[y_col].quantile(0.75)
         IQR_y = Q3_y - Q1_y
-    
+        
         lower_bound_x = Q1_x - 1.5 * IQR_x
         upper_bound_x = Q3_x + 1.5 * IQR_x
-    
+        
         lower_bound_y = Q1_y - 1.5 * IQR_y
         upper_bound_y = Q3_y + 1.5 * IQR_y
-    
+        
         non_outliers_df = filtered_df[(filtered_df[x_col] >= lower_bound_x) & (filtered_df[x_col] <= upper_bound_x) &
                                       (filtered_df[y_col] >= lower_bound_y) & (filtered_df[y_col] <= upper_bound_y)]
-    
+        
         sorted_df = non_outliers_df.sort_values(by=x_col)
-    
+        
         x_min = non_outliers_df[x_col].min()
         x_max = non_outliers_df[x_col].max()
         y_min = non_outliers_df[y_col].min()
         y_max = non_outliers_df[y_col].max()
         bounding_box_area = (x_max - x_min) * (y_max - y_min)
-    
+        
         auc = np.trapz(sorted_df[y_col], sorted_df[x_col])
-    
+        
         path_length = np.sum(np.sqrt(np.diff(non_outliers_df[x_col])**2 + np.diff(non_outliers_df[y_col])**2))
-    
-        display_options_popup = Toplevel(self.app.root)
+        
+        display_options_popup = Toplevel(self.app.root, bg='#19232D')
         display_options_popup.title("Display Options")
         display_options_popup.geometry("300x500")
         display_options_popup.update_idletasks()
         window_width = display_options_popup.winfo_width()
         window_height = display_options_popup.winfo_height()
         center_window(display_options_popup, window_width, window_height)
-    
+        
         show_bounding_box_var = BooleanVar(value=False)
         show_roi_var = BooleanVar(value=False)
         show_auc_var = BooleanVar(value=False)
         square_graph_var = BooleanVar(value=False)
         plot_over_video_var = BooleanVar(value=False)
         zoom_in_var = BooleanVar(value=False)
-    
-        Checkbutton(display_options_popup, text="Show Bounding Box", variable=show_bounding_box_var).pack()
-        Checkbutton(display_options_popup, text="Show ROIs", variable=show_roi_var).pack()
-        Checkbutton(display_options_popup, text="Show Area Under Curve (AUC)", variable=show_auc_var).pack()
-        Checkbutton(display_options_popup, text="Square Graph", variable=square_graph_var).pack()
-        Checkbutton(display_options_popup, text="Plot Over Video", variable=plot_over_video_var).pack()
-        zoom_in_checkbutton = Checkbutton(display_options_popup, text="Zoom In", variable=zoom_in_var)
-        zoom_in_checkbutton.pack()
-    
-        # Define zoom_radius_label and zoom_radius_entry here within display_options_popup scope
-        zoom_radius_label = tk.Label(display_options_popup, text="Zoom Radius (pixels):")
-        zoom_radius_entry = tk.Entry(display_options_popup, textvariable=self.app.zoom_radius_value)
-    
-        # Initially hide zoom radius label and entry
-        zoom_radius_label.pack_forget()
-        zoom_radius_entry.pack_forget()
-    
+        
+        create_custom_checkbutton(display_options_popup, "Show Bounding Box", show_bounding_box_var).pack(anchor=tk.W)
+        create_custom_checkbutton(display_options_popup, "Show ROIs", show_roi_var).pack(anchor=tk.W)
+        create_custom_checkbutton(display_options_popup, "Show Area Under Curve (AUC)", show_auc_var).pack(anchor=tk.W)
+        create_custom_checkbutton(display_options_popup, "Square Graph", square_graph_var).pack(anchor=tk.W)
+        create_custom_checkbutton(display_options_popup, "Plot Over Video", plot_over_video_var).pack(anchor=tk.W)
+        zoom_in_checkbutton = create_custom_checkbutton(display_options_popup, "Zoom In", zoom_in_var)
+        zoom_in_checkbutton.pack(anchor=tk.W)
+        
+        #custom entry for zoom radius
+        zoom_radius_frame = create_custom_entry(display_options_popup, "Zoom Radius (pixels):", self.app.zoom_radius_value)
+        zoom_radius_frame.pack_forget()  #initially hide
+        
         def toggle_zoom_radius_entry():
             if zoom_in_var.get():
-                zoom_radius_label.pack(after=zoom_in_checkbutton)
-                zoom_radius_entry.pack(after=zoom_radius_label)
+                zoom_radius_frame.pack(after=zoom_in_checkbutton)
             else:
-                zoom_radius_label.pack_forget()
-                zoom_radius_entry.pack_forget()
-    
+                zoom_radius_frame.pack_forget()
+        
         zoom_in_var.trace_add('write', lambda *args: toggle_zoom_radius_entry())
-    
-        roi_listbox = Listbox(display_options_popup, selectmode=tk.MULTIPLE)
+        
+        roi_listbox = Listbox(display_options_popup, selectmode=tk.MULTIPLE, bg='#455364', fg='white', bd=0, highlightthickness=0)
         roi_listbox.pack(pady=10, fill=tk.BOTH, expand=True)
-    
+        
         for name in self.app.shape_drawer.shapes.keys():
             roi_listbox.insert(tk.END, name)
-    
+        
         for i in range(roi_listbox.size()):
             roi_listbox.selection_set(i)
-    
+        
         def on_apply():
             fig, ax = plt.subplots(figsize=(10, 6))
             
@@ -556,18 +546,18 @@ class DataProcessor:
         
             if zoom_in_var.get():
                 try:
-                    zoom_radius = float(zoom_radius_entry.get())
+                    zoom_radius = float(self.app.zoom_radius_value.get())
                     center_x = (x_max + x_min) / 2
                     center_y = (y_max + y_min) / 2
                     
-                    # Set zoomed-in limits
+                    #set zoomed in limits
                     ax.set_xlim([center_x - zoom_radius, center_x + zoom_radius])
                     ax.set_ylim([center_y - zoom_radius, center_y + zoom_radius])
                     
-                    # Invert the y-axis to flip the image and graph
+                    #invert the y axis to flip the image and graph
                     ax.invert_yaxis()
                     
-                    # Adjust the graph coordinates for zoomed-in view
+                    #adjust the graph coordinates for zoomed in view
                     non_outliers_df_zoomed = non_outliers_df[
                         (non_outliers_df[x_col] >= center_x - zoom_radius) & (non_outliers_df[x_col] <= center_x + zoom_radius) &
                         (non_outliers_df[y_col] >= center_y - zoom_radius) & (non_outliers_df[y_col] <= center_y + zoom_radius)
@@ -595,42 +585,80 @@ class DataProcessor:
             ax.text(0.5, -0.125, path_text, ha='center', va='center', transform=ax.transAxes, fontsize=12)
             ax.text(0.5, -0.1, auc_text, ha='center', va='center', transform=ax.transAxes, fontsize=12)
         
-            show_plot_popup(self.app, fig)
+            self.show_plot_popup(self.app, fig)
             display_options_popup.destroy()
         
-        apply_button = tk.Button(display_options_popup, text="Apply", command=on_apply)
+        apply_button = self.app.create_rounded_button(display_options_popup, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Apply", command=on_apply)
         apply_button.pack(pady=10)
         
         display_options_popup.mainloop()
 
         
-def show_plot_popup(app, fig):
-    popup = Toplevel(app.root)
-    popup.title("Plot")
-
-    # Set the size of the popup window
-    popup.geometry("1280x720")  # Adjust the size as needed
-        
-    canvas = FigureCanvasTkAgg(fig, master=popup)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)  # Ensure the canvas widget fills the window
+    def show_plot_popup(self, app, fig):
+        popup = Toplevel(app.root, bg='#19232D')
+        popup.title("Plot")
+    
+        #set the size of the popup window
+        popup.geometry("1280x720")  # Adjust the size as needed
             
-    # Center the popup window after it is created and sized
-    popup.update_idletasks()  # Ensure the window dimensions are calculated
-    window_width = popup.winfo_width()
-    window_height = popup.winfo_height()
-    center_window(popup, window_width, window_height)
-        
-    download_button = tk.Button(popup, text="Download Image", command=lambda: download_image(fig))
-    download_button.pack()
-        
+        canvas = FigureCanvasTkAgg(fig, master=popup)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+                
+        #center the popup window after it is created and sized
+        popup.update_idletasks()
+        window_width = popup.winfo_width()
+        window_height = popup.winfo_height()
+        center_window(popup, window_width, window_height)
+            
+        download_button = self.app.create_rounded_button(popup, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Download", command=lambda: self.download_image(fig))
+        download_button.pack(pady=10)
+            
+    
+            
+    def download_image(self, fig):
+        file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png"), ("All files", "*.*")])
+        if file_path:
+            fig.savefig(file_path)
+            messagebox.showinfo("Success", f"Image saved to {file_path}")
 
-        
-def download_image(fig):
-    file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png"), ("All files", "*.*")])
-    if file_path:
-        fig.savefig(file_path)
-        messagebox.showinfo("Success", f"Image saved to {file_path}")
+def create_custom_checkbutton(parent, text, variable, command=None, width=20, height=20):
+    def draw_checkbox(canvas, checked):
+        canvas.delete("all")  # Clear the canvas
+        if checked:
+            #draw checked state
+            canvas.create_rectangle(0, 0, width, height, fill='#455364', outline="black")
+            canvas.create_oval(5, 5, width - 5, height - 5, fill="white", outline="white")
+        else:
+            #draw unchecked state
+            canvas.create_rectangle(0, 0, width, height, fill="#455364", outline="black")
 
+    frame = tk.Frame(parent, bg='#19232D')
+    frame.pack(anchor=tk.W, fill=tk.X, expand=True)
+    
+    canvas = tk.Canvas(frame, width=width, height=height, bg='#19232D', bd=0, highlightthickness=0)
+    canvas.pack(side=tk.LEFT, padx=5, pady=5)
 
+    def on_click():
+        variable.set(not variable.get())
+        draw_checkbox(canvas, variable.get())
+        if command:
+            command()
+
+    checkbox_text = tk.Label(frame, text=text, bg='#19232D', fg='white')
+    checkbox_text.pack(side=tk.LEFT, padx=5)
+
+    draw_checkbox(canvas, variable.get())
+    canvas.bind("<Button-1>", lambda e: on_click())
+    checkbox_text.bind("<Button-1>", lambda e: on_click())
+
+    return frame
+
+def create_custom_entry(parent, text, variable):
+    frame = tk.Frame(parent, bg='#19232D')
+    label = tk.Label(frame, text=text, bg='#19232D', fg='white')
+    label.pack(side=tk.LEFT, padx=5, pady=5)
+    entry = tk.Entry(frame, textvariable=variable)
+    entry.pack(side=tk.LEFT, padx=5, pady=5)
+    return frame
         

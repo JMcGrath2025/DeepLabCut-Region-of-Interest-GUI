@@ -11,81 +11,112 @@ import json
 from shapely.geometry import Polygon
 import pandas as pd
 import cv2
+import ctypes
 
 
+def get_scaling_factor():
+    # Use ctypes to call the necessary Windows APIs
+    try:
+        awareness = ctypes.c_int()
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # Set the awareness level
+        ctypes.windll.shcore.GetProcessDpiAwareness(0, ctypes.byref(awareness))
 
+        dpi_x = ctypes.c_uint()
+        dpi_y = ctypes.c_uint()
+        monitor = ctypes.windll.user32.MonitorFromWindow(ctypes.windll.user32.GetForegroundWindow(), 1)
+        ctypes.windll.shcore.GetDpiForMonitor(monitor, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
+
+        scaling_factor = dpi_x.value / 96.0  # Standard DPI is 96
+        return scaling_factor
+    except Exception as e:
+        print(f"Error obtaining scaling factor: {e}")
+        return 1.0  # Default to 1.0 if unable to get scaling factor
     
 class Application:
     def __init__(self, root):
         #set root and title
         self.root = root
         self.root.title("Region of Interest Tool")
-    
-        #define window size
-        self.window_width = 1100
-        self.window_height = 900
+
+        self.root.resizable(False, True)
+
+        #define window size based on scaling factor
+        scaling_factor = get_scaling_factor()
+        self.window_width = 1200
+        self.base_window_height = 950
+        self.window_height = self.base_window_height
+        
+        print(scaling_factor)
+        if scaling_factor > 1:
+            self.window_height = int(self.base_window_height / scaling_factor) 
+
         #center window on screen
         center_window(self.root, self.window_width, self.window_height)
-        
+
+        self.root.configure(bg='#19232D')
+
         #define main canvas
-        self.main_canvas = tk.Canvas(root)
+        self.main_canvas = tk.Canvas(root, bg='#19232D', bd=0, highlightthickness=0)
         self.main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        #vertical scroll bar
-        self.scrollbar = ttk.Scrollbar(root, orient="vertical", command=self.main_canvas.yview)
-        self.scrollbar.pack(side=tk.RIGHT, fill="y")
-        
-        self.main_canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.main_canvas.bind('<Configure>', lambda e: self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all")))
-    
+
+        #always add vertical scroll bar if scaling factor is above 100%
+        if scaling_factor > 1:
+            #vertical scroll bar
+            self.scrollbar = ttk.Scrollbar(root, orient="vertical", command=self.main_canvas.yview)
+            self.scrollbar.pack(side=tk.RIGHT, fill="y")
+            self.main_canvas.configure(yscrollcommand=self.scrollbar.set)
+            self.main_canvas.bind('<Configure>', lambda e: self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all")))
+
+            #bind scroll wheel to scrollbar
+            self.root.bind_all("<MouseWheel>", self._on_mouse_wheel)
+
         #create frame inside of canvas to hold other UI
-        self.main_frame = tk.Frame(self.main_canvas)
+        self.main_frame = tk.Frame(self.main_canvas, bg='#19232D')
         self.main_canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
-    
+
         #create top frame to hold canvas
-        self.top_frame = tk.Frame(self.main_frame)
-        self.top_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=(50, 25), pady=10)
-        
+        self.top_frame = tk.Frame(self.main_frame, bg='#19232D')
+        self.top_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=(70, 25), pady=10)
+
         #create bottom frame to hold buttons and labels
-        self.bottom_frame = tk.Frame(self.main_frame)
-        self.bottom_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=(50, 25), pady=10)
-        
-        #configure columns and rows expand equally
+        self.bottom_frame = tk.Frame(self.main_frame, bg='#19232D')
+        self.bottom_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=(70, 25), pady=10)
+
+        #configure columns and rows to expand equally
         self.bottom_frame.columnconfigure(0, weight=1)
         self.bottom_frame.columnconfigure(1, weight=1)
         self.bottom_frame.columnconfigure(2, weight=1)
         self.bottom_frame.rowconfigure(0, weight=1)
-        
+
         #define left bottom frame
-        self.left_frame = tk.Frame(self.bottom_frame)
-        self.left_frame.grid(row=0, column=0, padx=(25, 50), pady=10, sticky="nsew")
-        
+        self.left_frame = tk.Frame(self.bottom_frame, bg='#19232D')
+        self.left_frame.grid(row=0, column=0, padx=(20, 50), pady=10, sticky="nsew")
+
         #define bottom center frame
-        self.center_frame = tk.Frame(self.bottom_frame)
-        self.center_frame.grid(row=0, column=1, padx=(200, 75), pady=10, sticky="nsew")
-        
+        self.center_frame = tk.Frame(self.bottom_frame, bg='#19232D')
+        self.center_frame.grid(row=0, column=1, padx=(210, 65), pady=10, sticky="nsew")
+
         #define right bottom frame
-        self.right_frame = tk.Frame(self.bottom_frame)
+        self.right_frame = tk.Frame(self.bottom_frame, bg='#19232D')
         self.right_frame.grid(row=0, column=2, padx=(50, 25), pady=10, sticky="nsew")
-    
+
         #canvas for drawing ROI
-        self.canvas_width = 960 #dimensions of canvas
-        self.canvas_height = 540
-        self.canvas = tk.Canvas(self.top_frame, bg="white", width=self.canvas_width, height=self.canvas_height)
+        self.canvas_width = 1056
+        self.canvas_height = 594
+        self.canvas = tk.Canvas(self.top_frame, bg="#455364", width=self.canvas_width, height=self.canvas_height, bd=0, highlightthickness=0)
         self.canvas.pack()
-        
-    
+
         #initialize other classes
-        self.shape_drawer = ShapeDrawer(self.canvas, self) #drawing the shape
-        self.video_handler = VideoHandler(self) #handling video data
-        self.data_processor = DataProcessor(self) #processing csv files
-    
+        self.shape_drawer = ShapeDrawer(self.canvas, self)  #drawing the shape
+        self.video_handler = VideoHandler(self)  #handling video data
+        self.data_processor = DataProcessor(self)  #processing csv files
+
         #initialize variables
-        self.track_mode = 'majority' #starting mode
-        self.specific_body_part = None #body part to track
-        self.csv_loaded = False #is the csv file is loaded
-        self.saved_details = [] #the details to save if processing multiple videos at once
-        self.previous_excluded_body_parts = set() #previously excluded body parts
+        self.track_mode = 'majority'  #starting mode
+        self.specific_body_part = None  #body part to track
+        self.csv_loaded = False  #is the csv file loaded
+        self.saved_details = []  #the details to save if processing multiple videos at once
+        self.previous_excluded_body_parts = set()  #previously excluded body parts
         self.excluded_body_parts = set()
         self.body_parts = set()
         self.percent = .5
@@ -94,84 +125,146 @@ class Application:
         self.start_frame = 0
         self.end_frame = None
         self.fps = None
-        
+
         #add widgets
         self.setup_widgets()
-        self.bind_events() #bind click events
+        self.bind_events()  # Bind click events
     
-    #set up the labels and buttons
+    
+    #set up the labels and button
     def setup_widgets(self):
-        
         #set up bottom center frame
-        self.time_label = tk.Label(self.center_frame, text="Time inside Regions Of Interest:")
+        self.time_label = tk.Label(self.center_frame, text="Time inside Regions Of Interest:", bg="#19232D", fg='white')
         self.time_label.grid(row=0, column=0, padx=5, pady=5, sticky="n")
     
-        self.body_parts_label = tk.Label(self.center_frame, text="Tracking Body Parts:\nNone", wraplength=175)
+        self.body_parts_label = tk.Label(self.center_frame, text="Tracking Body Parts:\nNone", wraplength=175, bg="#19232D", fg='white')
         self.body_parts_label.grid(row=3, column=0, padx=5, pady=5, sticky="n")
         
-        self.plot_button = tk.Button(self.center_frame, text="Plot", command=self.plot, width=15, height=2)
+        self.plot_button = self.create_rounded_button(self.center_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Plot", command=self.plot)
         self.plot_button.grid(row=5, column=0, padx=5, pady=5, sticky="n")
         
-        self.path_button = tk.Button(self.center_frame, text="Pathing", command=self.create_pathing_slideshow, width=15, height=2)
+        self.path_button = self.create_rounded_button(self.center_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Pathing", command=self.create_pathing_slideshow)
         self.path_button.grid(row=6, column=0, padx=5, pady=5, sticky="n")
         
-        
         #set up bottom left frame
-        self.current_mode_label = tk.Label(self.left_frame, text="Current Mode:\n Majority Mode")
+        self.current_mode_label = tk.Label(self.left_frame, text="Current Mode:\n Majority Mode", bg="#19232D", fg='white')
         self.current_mode_label.grid(row=1, column=0, padx=5, pady=5, sticky="n")
     
-        self.load_csv_label = tk.Label(self.left_frame, text="CSV File:\n not loaded", wraplength=100)
+        self.load_csv_label = tk.Label(self.left_frame, text="CSV File:\n not loaded", wraplength=100, bg="#19232D", fg='white')
         self.load_csv_label.grid(row=2, column=0, padx=5, pady=5, sticky="n")
         
-        self.change_percent_button = tk.Button(self.left_frame, text="Change Percentage", command=self.change_percent, width=15, height=2)
+        self.change_percent_button = self.create_rounded_button(self.left_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Change Percentage", command=self.change_percent)
         self.change_percent_button.grid(row=3, column=0, padx=5, pady=5, sticky="n")
         
-        self.percentage_label = tk.Label(self.left_frame, text="Current Percent:\n50%")
+        self.percentage_label = tk.Label(self.left_frame, text="Current Percent:\n50%", bg="#19232D", fg='white')
         self.percentage_label.grid(row=4, column=0, padx=5, pady=5, sticky="n")
         
-        self.help_button = tk.Button(self.left_frame, text="Instructions", command=self.show_help, width=15, height=2)
+        self.help_button = self.create_rounded_button(self.left_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Instructions", command=self.show_help)
         self.help_button.grid(row=0, column=0, padx=5, pady=5, sticky="n")
     
         #set up bottom right frame
-        self.open_video_button = tk.Button(self.right_frame, text="Open Video", command=self.open_video, width=15, height=2)
+        self.open_video_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Open Video", command=self.open_video)
         self.open_video_button.grid(row=0, column=0, padx=5, pady=5, sticky="n")
     
-        self.open_csv_button = tk.Button(self.right_frame, text="Open CSV", command=self.open_csv, width=15, height=2)
+        self.open_csv_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Open CSV", command=self.open_csv)
         self.open_csv_button.grid(row=1, column=0, padx=5, pady=5, sticky="n")
     
-        self.analyze_segment_button = tk.Button(self.right_frame, text="Get Video Segment", command=self.open_segment_selector, width=15, height=2)
+        self.analyze_segment_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Get Video Segment", command=self.open_segment_selector)
         self.analyze_segment_button.grid(row=1, column=1, padx=5, pady=5, sticky="n")
     
-        self.save_zones_button = tk.Button(self.right_frame, text="Save ROI", command=self.save_zones, width=15, height=2)
+        self.save_zones_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Save ROI", command=self.save_zones)
         self.save_zones_button.grid(row=2, column=0, padx=5, pady=5, sticky="n")
     
-        self.load_zones_button = tk.Button(self.right_frame, text="Load ROI", command=self.load_zones, width=15, height=2)
+        self.load_zones_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Load ROI", command=self.load_zones)
         self.load_zones_button.grid(row=2, column=1, padx=5, pady=5, sticky="n")
     
-        self.majority_mode_button = tk.Button(self.right_frame, text="Percentage Mode", command=self.switch_to_majority_mode, width=15, height=2)
+        self.majority_mode_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Percentage Mode", command=self.switch_to_majority_mode)
         self.majority_mode_button.grid(row=3, column=0, padx=5, pady=5, sticky="n")
     
-        self.specific_body_part_mode_button = tk.Button(self.right_frame, text="Body Part Mode", command=self.switch_to_specific_body_part_mode, width=15, height=2)
+        self.specific_body_part_mode_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Body Part Mode", command=self.switch_to_specific_body_part_mode)
         self.specific_body_part_mode_button.grid(row=3, column=1, padx=5, pady=5, sticky="n")
     
-        self.any_part_mode_button = tk.Button(self.right_frame, text="Any Part Mode", command=self.switch_to_any_part_mode, width=15, height=2)
+        self.any_part_mode_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Any Part Mode", command=self.switch_to_any_part_mode)
         self.any_part_mode_button.grid(row=4, column=0, padx=5, pady=5, sticky="n")
     
-        self.start_button = tk.Button(self.center_frame, text="Start Processing", command=self.start_processing, state=tk.DISABLED, width=15, height=2)
+        self.start_button = self.create_rounded_button(self.center_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Start Processing", command=self.start_processing)
         self.start_button.grid(row=2, column=0, padx=5, pady=5, sticky="n")
+        self.start_button.config(state=tk.DISABLED) # Disable initially
     
-        self.clear_shapes_button = tk.Button(self.right_frame, text="Clear Shapes", command=self.clear_shapes, width=15, height=2)
+        self.clear_shapes_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Clear Shapes", command=self.clear_shapes)
         self.clear_shapes_button.grid(row=0, column=1, padx=5, pady=5, sticky="n")
     
-        self.exclude_body_parts_button = tk.Button(self.right_frame, text="Exclude Body Parts", command=self.exclude_body_parts, width=15, height=2)
+        self.exclude_body_parts_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Exclude Body Parts", command=self.exclude_body_parts)
         self.exclude_body_parts_button.grid(row=4, column=1, padx=5, pady=5, sticky="n")
     
-        self.process_saved_details_button = tk.Button(self.right_frame, text="Process Saved Details", command=self.process_saved_details, width=15, height=2)
+        self.process_saved_details_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Process Saved Details", command=self.process_saved_details)
         self.process_saved_details_button.grid(row=5, column=1, padx=5, pady=5, sticky="n")
     
-        self.show_saved_details_button = tk.Button(self.right_frame, text="Save Details", command=self.save_details_and_show, width=15, height=2)
+        self.show_saved_details_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Save Details", command=self.save_details_and_show)
         self.show_saved_details_button.grid(row=5, column=0, padx=5, pady=5, sticky="n")
         
+    def _on_mouse_wheel(self, event):
+        self.main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    
+    def _adjust_color(self, color, amount):
+        '''
+        This function changes the darkens the shape of the color when the button is pressed
+        '''
+        import colorsys
+        color = self.root.winfo_rgb(color)
+        color = [x/65535 for x in color]
+        color = colorsys.rgb_to_hls(*color)
+        color = list(color)
+        color[1] = max(0, min(1, color[1] + amount))
+        color = colorsys.hls_to_rgb(*color)
+        color = [int(x * 255) for x in color]
+        return "#%02x%02x%02x" % tuple(color)
+    
+    #function to create a rounded button
+    def create_rounded_button(self, parent, width, height, corner_radius, bg_color, fg_color, text, command=None):
+        '''
+        This function creates a button with rounded corners
+        '''
+        button = tk.Canvas(parent, borderwidth=0, highlightthickness=0, background=parent["background"],
+                           width=width, height=height)
+        
+        pressed_color = self._adjust_color(bg_color, -0.2)
+        released_color = bg_color
+        
+        def draw_button(canvas, color, width, height, corner_radius, text, fg_color):
+            '''
+            This function creates the shapes of the rounded buttons
+            '''
+            canvas.delete("all")  # Clear the canvas
+            if corner_radius > height/2:
+                corner_radius = height/2
+            if corner_radius > width/2:
+                corner_radius = width/2
+
+            canvas.create_arc((0, 0, corner_radius*2, corner_radius*2), start=90, extent=90, fill=color, outline=color)
+            canvas.create_arc((width-corner_radius*2, 0, width, corner_radius*2), start=0, extent=90, fill=color, outline=color)
+            canvas.create_arc((0, height-corner_radius*2, corner_radius*2, height), start=180, extent=90, fill=color, outline=color)
+            canvas.create_arc((width-corner_radius*2, height-corner_radius*2, width, height), start=270, extent=90, fill=color, outline=color)
+            
+            canvas.create_rectangle((corner_radius, 0, width-corner_radius, height), fill=color, outline=color)
+            canvas.create_rectangle((0, corner_radius, width, height-corner_radius), fill=color, outline=color)
+            
+            canvas.create_text(width/2, height/2, text=text, fill=fg_color, font=("Helvetica", int(height/5)), anchor="center")
+        
+        def on_press(event):
+            draw_button(button, pressed_color, width, height, corner_radius, text, fg_color)
+        
+        def on_release(event):
+            draw_button(button, released_color, width, height, corner_radius, text, fg_color)
+            if command:
+                command()
+
+        draw_button(button, released_color, width, height, corner_radius, text, fg_color)
+        button.bind("<ButtonPress-1>", on_press)
+        button.bind("<ButtonRelease-1>", on_release)
+
+        return button
+
     
     def bind_events(self):
         '''
@@ -196,7 +289,7 @@ class Application:
         self.track_mode = 'specific'
 
         #create a popup window to prompt which body part to switch to
-        body_part_popup = Toplevel(self.root)
+        body_part_popup = Toplevel(self.root, bg='#19232D')
         body_part_popup.title("Select Body Part")
         body_part_popup.geometry("250x250")
         body_part_popup.update_idletasks()
@@ -220,17 +313,17 @@ class Application:
                 messagebox.showerror("Error", "No body part selected.")
 
         #create a frame to hold the body part popup
-        frame = tk.Frame(body_part_popup)
+        frame = tk.Frame(body_part_popup, bg='#19232D')
         frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
         
         #define the listbox to hold the body parts from the body part set
-        listbox = Listbox(frame, selectmode=tk.SINGLE)
+        listbox = Listbox(frame, selectmode=tk.SINGLE, bg='#455364', fg='white', bd=0, highlightthickness=0)
         for part in self.body_parts:
             listbox.insert(tk.END, part)
         listbox.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
         #create a select button
-        select_button = tk.Button(frame, text="Select", command=on_select)
+        select_button = self.create_rounded_button(frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Apply", command=on_select)
         select_button.pack(side=tk.BOTTOM, pady=10)
 
         body_part_popup.mainloop()
@@ -321,35 +414,34 @@ class Application:
 
         #bring the excluded window to the top level
         self.exclude_window = Toplevel(self.root)
-        self.exclude_window.title("Exclude Body Parts")  # Title the window "Exclude Body Parts"
+        self.exclude_window.title("Exclude Body Parts")
+        self.exclude_window.configure(bg='#19232D')
+        self.exclude_window.geometry("250x250")
+        center_window(self.exclude_window, 250, 250)
+        frame = tk.Frame(self.exclude_window, bg='#19232D')
+        frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
 
-        #dictionary that contains excluded body parts
+        #create listbox for body parts
         self.excluded_body_parts_vars = {}
-        for body_part in self.body_parts: #create checkbox window for bodyparts
-            var = tk.BooleanVar(value=body_part in self.excluded_body_parts)
-            chk = tk.Checkbutton(self.exclude_window, text=body_part, variable=var)
-            chk.pack(anchor=tk.W)
-            self.excluded_body_parts_vars[body_part] = var
+        listbox = Listbox(frame, selectmode=tk.MULTIPLE, bg="#455364", fg="white", bd=0, highlightthickness=0)
+        for body_part in self.body_parts:
+            listbox.insert(tk.END, body_part)
+            if body_part in self.excluded_body_parts:
+                listbox.selection_set(tk.END)
 
-        #apply button to apply the exclusions
-        self.exclude_button = tk.Button(self.exclude_window, text="Apply", command=self.apply_exclusions)
-        self.exclude_button.pack()
-        
-        #opens the window in the center of the screen
-        self.exclude_window.update_idletasks()
-        window_width = self.exclude_window.winfo_width()
-        window_height = self.exclude_window.winfo_height()
-        center_window(self.exclude_window, window_width, window_height)
+        listbox.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-    def apply_exclusions(self):
-        '''
-        This function applies the exclusions to the body part set
-        '''
-        self.excluded_body_parts = {body_part for body_part, var in self.excluded_body_parts_vars.items() if var.get()}
-        #store to keep previous excluded body parts for same animal
-        self.previous_excluded_body_parts = self.excluded_body_parts.copy()
-        self.exclude_window.destroy()
-        self.update_body_part_label([bp for bp in self.body_parts if bp not in self.excluded_body_parts])
+        def apply_exclusions():
+            selected_indices = listbox.curselection()
+            self.excluded_body_parts = {self.body_parts[i] for i in selected_indices}
+            self.previous_excluded_body_parts = self.excluded_body_parts.copy()
+            self.exclude_window.destroy()
+            self.update_body_part_label([bp for bp in self.body_parts if bp not in self.excluded_body_parts])
+
+        #use create_rounded_button method for the Apply button
+        apply_button = self.create_rounded_button(frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Apply", command=apply_exclusions
+        )
+        apply_button.pack(side=tk.BOTTOM, pady=10)
         
     
     def update_body_part_label(self, body_parts):
@@ -387,7 +479,7 @@ class Application:
         This function clears the shapes and the labels
         '''
         self.shape_drawer.clear_shapes()
-        self.update_time_labels()  # Reset the time labels to reflect the cleared shapes
+        self.update_time_labels()
         print("All shapes cleared.")
     
     def frame_to_time(self, frame_number):
@@ -416,13 +508,13 @@ class Application:
             return
     
         details = {
-            'video_path': self.video_path,  # Use the stored video path
+            'video_path': self.video_path,
             'csv_path': self.data_processor.file_path,
             'start_frame': self.start_frame,
             'end_frame': self.end_frame,
             'shapes': {name: list(polygon.exterior.coords) for name, polygon in self.shape_drawer.shapes.items()},
             'excluded_body_parts': list(self.excluded_body_parts),
-            'mode': self.track_mode  # Save the current mode
+            'mode': self.track_mode  
         }
     
         self.saved_details.append(details)
@@ -439,7 +531,7 @@ class Application:
         results = []
     
         for i, details in enumerate(self.saved_details):
-            # Load video
+            #load video
             self.cap = cv2.VideoCapture(details['video_path'])
             if not self.cap.isOpened():
                 print(f"Error: Could not open video {details['video_path']}.")
@@ -451,25 +543,25 @@ class Application:
             self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
-            # Load CSV
+            #load CSV
             self.data = pd.read_csv(details['csv_path'], header=[0, 1, 2])
             self.csv_loaded = True
             self.start_frame = details['start_frame']
             self.end_frame = details['end_frame']
     
-            # Load ROIs
+            #load ROIs
             self.shape_drawer.shapes = {name: Polygon(points) for name, points in details['shapes'].items()}
             self.excluded_body_parts = set(details['excluded_body_parts'])
     
-            # Process each video segment
+            #process each video segment
             self.data_processor.verify_frames()
             self.data_processor.check_body_parts_in_shapes()
     
-            # Convert frame numbers to HH:MM:SS format
+            #convert frame numbers to HH:MM:SS format
             start_time = self.frame_to_time(self.start_frame)
             end_time = self.frame_to_time(self.end_frame)
     
-            # Prepare result for this video
+            #prepare result for this video
             result = {
                 'video_file': details['video_path'],
                 'start_time': start_time,
@@ -480,7 +572,7 @@ class Application:
                 result[shape_name] = time
             results.append(result)
     
-        # Save results to a single CSV
+        #save results to a single CSV
         if results:
             results_df = pd.DataFrame(results)
             results_file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
@@ -494,23 +586,23 @@ class Application:
         '''
         if hasattr(self, 'saved_details_window') and self.saved_details_window.winfo_exists():
             self.update_saved_details_listbox()
-            self.saved_details_window.lift()  # Bring the window to the front
+            self.saved_details_window.lift()
             return
         
-        # Create a new Toplevel window
+        #create a new Toplevel window
         self.saved_details_window = Toplevel(self.root)
         self.saved_details_window.title("Saved Details")
         self.saved_details_window.geometry("300x400")
         center_window(self.saved_details_window, 300, 400)
     
-        # Create a listbox to display saved details
+        #create a listbox to display saved details
         self.saved_details_listbox = Listbox(self.saved_details_window, selectmode=MULTIPLE)
         self.saved_details_listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
     
-        # Add saved details to the listbox
+        #add saved details to the listbox
         self.update_saved_details_listbox()
     
-        # Add a delete button
+        #add a delete button
         delete_button = tk.Button(self.saved_details_window, text="Delete Selected", command=self.delete_selected_details)
         delete_button.pack(pady=10)
     
@@ -538,7 +630,28 @@ class Application:
             del self.saved_details[index]
         self.update_saved_details_listbox()
     
+    def custom_messagebox(self, title, message, bg_color, fg_color):
+        msg_box = Toplevel()
+        msg_box.title(title)
+        msg_box.configure(bg=bg_color)
     
+        #center the window
+        window_width = 300
+        window_height = 150
+        screen_width = msg_box.winfo_screenwidth()
+        screen_height = msg_box.winfo_screenheight()
+        x = (screen_width // 2) - (window_width // 2)
+        y = (screen_height // 2) - (window_height // 2)
+        msg_box.geometry(f'{window_width}x{window_height}+{x}+{y}')
+    
+        tk.Label(msg_box, text=message, bg=bg_color, fg=fg_color, wraplength=250).pack(pady=20, padx=20)
+        
+        def close_messagebox():
+            msg_box.destroy()
+    
+        ok_button = self.create_rounded_button(msg_box, width=130, height=40, corner_radius=15, bg_color='#455364', fg_color='white', text="OK", command=close_messagebox)
+        ok_button.pack()
+        
     '''
     These are getter functions to get functions from other files
     '''

@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, Toplevel, messagebox
+from tkinter import filedialog, Toplevel, messagebox, ttk
 from PIL import Image, ImageTk
 import cv2
 from utils import center_window
@@ -45,24 +45,30 @@ class VideoHandler:
         This function opens a window that allows you to scroll through every frame in a video and select one to draw ROIs over
         '''
         #define the window title and bring it to the top level
-        self.app.selector_window = Toplevel(self.app.root)
+        self.app.selector_window = Toplevel(self.app.root, bg='#19232D')
         self.app.selector_window.title("Select Frame")
-        
+
+        #style for the ttk Scale
+        style = ttk.Style()
+        style.theme_use('clam')  # Use 'clam' theme for more customization options
+        style.configure("TScale", troughcolor="#455364")
+
         #create a slider to scroll through each frame starting at 0 and going to the end frame
-        self.app.frame_slider = tk.Scale(self.app.selector_window, from_=0, to=self.app.total_frames-1, orient=tk.HORIZONTAL)
+        self.app.frame_slider = ttk.Scale(self.app.selector_window, from_=0, to=self.app.total_frames-1, orient=tk.HORIZONTAL, style="TScale")
         self.app.frame_slider.pack(fill=tk.X)
-        
+
         #create select button that selects the frame to use as the canvas
-        self.app.select_button = tk.Button(self.app.selector_window, text="Select Frame", command=self.select_frame)
-        self.app.select_button.pack()
-        
+        self.app.select_button = self.app.create_rounded_button(self.app.selector_window, width=130, height=40, corner_radius=15, bg_color='#455364', fg_color='white', text="Select", command=self.select_frame)
+        self.app.select_button.pack(pady=10)
+
         #create label to display the current frame
-        self.app.frame_label = tk.Label(self.app.selector_window)
+        self.app.frame_label = tk.Label(self.app.selector_window, bg='#19232D', fg='white')
         self.app.frame_label.pack()
-        
-        #bind the slider to mouse moition and update the frame being shown when then slider changes
-        self.app.frame_slider.bind("<Motion>", lambda event: self.update_frame_preview(event))
-        self.update_frame_preview(0)
+
+        #bind the slider to mouse motion and update the frame being shown when the slider changes
+        self.app.frame_slider.bind("<Motion>", self.update_frame_preview)
+        self.update_frame_preview(None)
+
         self.app.selector_window.update_idletasks()
         #find the window width and height and center the window when it pops up
         window_width = self.app.selector_window.winfo_width()
@@ -109,56 +115,61 @@ class VideoHandler:
             self.app.canvas.create_image(0, 0, anchor=tk.NW, image=self.app.canvas_image)
             self.app.canvas.image = self.app.canvas_image
         self.app.selector_window.destroy()
-        messagebox.showinfo("Frame Selected", f"Frame {frame_index} has been selected.")
+        self.app.custom_messagebox("Frame Selected", f"Frame {frame_index} has been selected.", bg_color='#19232D', fg_color='white')
             
     def open_segment_selector(self):
         '''
         This function opens the window that has sliders to change the start and end frame of the video
         '''
-        #check that the video is openend
+        #check that the video is opened
         if not hasattr(self.app, 'cap') or not self.app.cap.isOpened():
             print("Error: No video loaded.")
             return
-        
+
         #name the window and bring it to the TopLevel
-        self.app.segment_window = Toplevel(self.app.root)
+        self.app.segment_window = Toplevel(self.app.root, bg='#19232D')
         self.app.segment_window.title("Select Segment")
         self.app.segment_window.withdraw()
-    
+
+        #style for the ttk Scale
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure("TScale", troughcolor="#455364")
+
         #create label and slider to define the start frame
-        self.app.start_frame_label = tk.Label(self.app.segment_window, text="Start Frame:")
+        self.app.start_frame_label = tk.Label(self.app.segment_window, text="Start Frame:", bg='#19232D', fg='white')
         self.app.start_frame_label.pack()
-        self.app.start_frame_slider = tk.Scale(self.app.segment_window, from_=0, to=self.app.total_frames-1, orient=tk.HORIZONTAL)
+        self.app.start_frame_slider = ttk.Scale(self.app.segment_window, from_=0, to=self.app.total_frames-1, orient=tk.HORIZONTAL, style="TScale")
         self.app.start_frame_slider.pack(fill=tk.X)
-        
-        #show the time in normal format 
-        self.app.start_frame_time_frame = tk.Frame(self.app.segment_window)
+
+        #show the time in normal format
+        self.app.start_frame_time_frame = tk.Frame(self.app.segment_window, bg='#19232D')
         self.app.start_frame_time_frame.pack()
-        
-        #create entries for the start frame hour minute and second
+
+        #create entries for the start frame hour, minute, and second
         self.app.start_frame_hour_entry = tk.Entry(self.app.start_frame_time_frame, width=3)
         self.app.start_frame_hour_entry.pack(side=tk.LEFT)
         self.app.start_frame_minute_entry = tk.Entry(self.app.start_frame_time_frame, width=3)
         self.app.start_frame_minute_entry.pack(side=tk.LEFT)
         self.app.start_frame_second_entry = tk.Entry(self.app.start_frame_time_frame, width=3)
         self.app.start_frame_second_entry.pack(side=tk.LEFT)
-        
+
         #create button to move the start frame up by one second or down by one second
-        self.app.start_frame_up_button = tk.Button(self.app.start_frame_time_frame, text="▲", command=lambda: self.adjust_time(self.app.start_frame_hour_entry, self.app.start_frame_minute_entry, self.app.start_frame_second_entry, self.app.start_frame_slider, 1, 'start'))
-        self.app.start_frame_up_button.pack(side=tk.LEFT)
-        self.app.start_frame_down_button = tk.Button(self.app.start_frame_time_frame, text="▼", command=lambda: self.adjust_time(self.app.start_frame_hour_entry, self.app.start_frame_minute_entry, self.app.start_frame_second_entry, self.app.start_frame_slider, -1, 'start'))
-        self.app.start_frame_down_button.pack(side=tk.LEFT)
-    
+        self.app.start_frame_up_button = tk.Button(self.app.start_frame_time_frame, text="▲", bg='#455364', fg='white', command=lambda: self.adjust_time(self.app.start_frame_hour_entry, self.app.start_frame_minute_entry, self.app.start_frame_second_entry, self.app.start_frame_slider, 1, 'start'))
+        self.app.start_frame_up_button.pack(side=tk.LEFT, pady=2.5, padx=1.5)
+        self.app.start_frame_down_button = tk.Button(self.app.start_frame_time_frame, text="▼", bg='#455364', fg='white', command=lambda: self.adjust_time(self.app.start_frame_hour_entry, self.app.start_frame_minute_entry, self.app.start_frame_second_entry, self.app.start_frame_slider, -1, 'start'))
+        self.app.start_frame_down_button.pack(side=tk.LEFT, pady=2.5, padx=1.5)
+
         #create label and slider for the end frame
-        self.app.end_frame_label = tk.Label(self.app.segment_window, text="End Frame:")
+        self.app.end_frame_label = tk.Label(self.app.segment_window, text="End Frame:", bg='#19232D', fg='white')
         self.app.end_frame_label.pack()
-        self.app.end_frame_slider = tk.Scale(self.app.segment_window, from_=0, to=self.app.total_frames-1, orient=tk.HORIZONTAL)
+        self.app.end_frame_slider = ttk.Scale(self.app.segment_window, from_=0, to=self.app.total_frames-1, orient=tk.HORIZONTAL, style="TScale")
         self.app.end_frame_slider.pack(fill=tk.X)
-        
+
         #convert the frames into standard time format
-        self.app.end_frame_time_frame = tk.Frame(self.app.segment_window)
+        self.app.end_frame_time_frame = tk.Frame(self.app.segment_window, bg='#19232D')
         self.app.end_frame_time_frame.pack()
-        
+
         #create entries for the standard time for the end frame
         self.app.end_frame_hour_entry = tk.Entry(self.app.end_frame_time_frame, width=3)
         self.app.end_frame_hour_entry.pack(side=tk.LEFT)
@@ -166,34 +177,34 @@ class VideoHandler:
         self.app.end_frame_minute_entry.pack(side=tk.LEFT)
         self.app.end_frame_second_entry = tk.Entry(self.app.end_frame_time_frame, width=3)
         self.app.end_frame_second_entry.pack(side=tk.LEFT)
-        
+
         #create way to move one second above or below the current time
-        self.app.end_frame_up_button = tk.Button(self.app.end_frame_time_frame, text="▲", command=lambda: self.adjust_time(self.app.end_frame_hour_entry, self.app.end_frame_minute_entry, self.app.end_frame_second_entry, self.app.end_frame_slider, 1, 'end'))
-        self.app.end_frame_up_button.pack(side=tk.LEFT)
-        self.app.end_frame_down_button = tk.Button(self.app.end_frame_time_frame, text="▼", command=lambda: self.adjust_time(self.app.end_frame_hour_entry, self.app.end_frame_minute_entry, self.app.end_frame_second_entry, self.app.end_frame_slider, -1, 'end'))
-        self.app.end_frame_down_button.pack(side=tk.LEFT)
-    
+        self.app.end_frame_up_button = tk.Button(self.app.end_frame_time_frame, text="▲", bg='#455364', fg='white', command=lambda: self.adjust_time(self.app.end_frame_hour_entry, self.app.end_frame_minute_entry, self.app.end_frame_second_entry, self.app.end_frame_slider, 1, 'end'))
+        self.app.end_frame_up_button.pack(side=tk.LEFT, pady=2.5, padx=1.5)
+        self.app.end_frame_down_button = tk.Button(self.app.end_frame_time_frame, text="▼", bg='#455364', fg='white', command=lambda: self.adjust_time(self.app.end_frame_hour_entry, self.app.end_frame_minute_entry, self.app.end_frame_second_entry, self.app.end_frame_slider, -1, 'end'))
+        self.app.end_frame_down_button.pack(side=tk.LEFT, pady=2.5, padx=1.5)
+
         #bind motion on the start and end frame sliders
         self.app.start_frame_slider.bind("<Motion>", lambda event: self.update_entry_and_preview(self.app.start_frame_slider, 'start'))
         self.app.end_frame_slider.bind("<Motion>", lambda event: self.update_entry_and_preview(self.app.end_frame_slider, 'end'))
-        
+
         #bind enter to change the start frame and end frame by entering the standard time
         self.app.start_frame_hour_entry.bind("<Return>", lambda event: self.update_slider_from_time_entry(self.app.start_frame_slider, self.app.start_frame_hour_entry, self.app.start_frame_minute_entry, self.app.start_frame_second_entry, 'start'))
         self.app.start_frame_minute_entry.bind("<Return>", lambda event: self.update_slider_from_time_entry(self.app.start_frame_slider, self.app.start_frame_hour_entry, self.app.start_frame_minute_entry, self.app.start_frame_second_entry, 'start'))
         self.app.start_frame_second_entry.bind("<Return>", lambda event: self.update_slider_from_time_entry(self.app.start_frame_slider, self.app.start_frame_hour_entry, self.app.start_frame_minute_entry, self.app.start_frame_second_entry, 'start'))
-        
+
         self.app.end_frame_hour_entry.bind("<Return>", lambda event: self.update_slider_from_time_entry(self.app.end_frame_slider, self.app.end_frame_hour_entry, self.app.end_frame_minute_entry, self.app.end_frame_second_entry, 'end'))
         self.app.end_frame_minute_entry.bind("<Return>", lambda event: self.update_slider_from_time_entry(self.app.end_frame_slider, self.app.end_frame_hour_entry, self.app.end_frame_minute_entry, self.app.end_frame_second_entry, 'end'))
         self.app.end_frame_second_entry.bind("<Return>", lambda event: self.update_slider_from_time_entry(self.app.end_frame_slider, self.app.end_frame_hour_entry, self.app.end_frame_minute_entry, self.app.end_frame_second_entry, 'end'))
-        
+
         #create segment select button to select the segment of video to analyze
-        self.app.segment_select_button = tk.Button(self.app.segment_window, text="Select Segment", command=self.select_segment)
-        self.app.segment_select_button.pack()
-        
+        self.app.segment_select_button = self.app.create_rounded_button(self.app.segment_window, width=130, height=40, corner_radius=15, bg_color='#455364', fg_color='white', text="Select Segment", command=self.select_segment)
+        self.app.segment_select_button.pack(pady=10)
+
         #update the time entry based on the slider
         self.update_time_entry(self.app.start_frame_slider.get(), self.app.start_frame_hour_entry, self.app.start_frame_minute_entry, self.app.start_frame_second_entry)
         self.update_time_entry(self.app.end_frame_slider.get(), self.app.end_frame_hour_entry, self.app.end_frame_minute_entry, self.app.end_frame_second_entry)
-        
+
         #center the window
         self.app.segment_window.update_idletasks()
         center_window(self.app.segment_window, 500, 800)
