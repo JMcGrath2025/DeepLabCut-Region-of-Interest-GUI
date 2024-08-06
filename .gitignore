@@ -95,4 +95,4 @@ bin/
 *.zip
 *.tar.gz
 *.iso
-*.jar
+*.jar.*exe
