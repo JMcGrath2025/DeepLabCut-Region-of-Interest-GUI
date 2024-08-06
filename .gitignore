@@ -96,4 +96,4 @@ bin/
 *.tar.gz
 *.iso
 *.jar
-*.spec
+*.spec.gitattributes
