@@ -37,9 +37,15 @@ class Application:
         #set root and title
         self.root = root
         self.root.title("Region of Interest Tool")
-
+        
+        #construct the path to the icon file
+        self.icon_path = os.path.join('assets', 'icon.ico')
+        
+        #set the window icon
+        self.root.iconbitmap(self.icon_path)
+                
         self.root.resizable(False, True)
-
+        
         #define window size based on scaling factor
         scaling_factor = get_scaling_factor()
         self.window_width = 1200
@@ -125,6 +131,8 @@ class Application:
         self.start_frame = 0
         self.end_frame = None
         self.fps = None
+
+
 
         #add widgets
         self.setup_widgets()
@@ -272,6 +280,10 @@ class Application:
         '''
         self.canvas.bind("<Button-1>", self.shape_drawer.add_point)
         self.canvas.bind("<Button-3>", self.shape_drawer.complete_shape)
+        self.canvas.bind("<Motion>", lambda e: self.shape_drawer.mouse_move(e))
+        self.root.bind("<Shift_L>", lambda e: self.shape_drawer.shift_press(e))
+        self.root.bind("<KeyRelease-Shift_L>", lambda e: self.shape_drawer.shift_release(e))
+        
     
     def switch_to_majority_mode(self):
         '''
@@ -496,36 +508,58 @@ class Application:
         This funciton saves multiple different sets of details to process all at once
         '''
         if not hasattr(self, 'cap') or not hasattr(self, 'data'):
-            messagebox.showerror("Error", "Please load a video and a CSV file first.")
+            self.custom_messagebox("Error", "Please load a video and a CSV file first.", "#19232D", "white")
             return
     
         if not hasattr(self, 'start_frame') or not hasattr(self, 'end_frame'):
-            messagebox.showerror("Error", "Please select a segment of the video.")
+            self.custom_messagebox("Error", "Please select a segment of the video.", "#19232D", "white")
             return
     
         if not self.shape_drawer.shapes:
-            messagebox.showerror("Error", "Please load or draw ROI shapes.")
+            self.custom_messagebox("Error", "Please load or draw ROI's", "#19232D", "white")
             return
-    
-        details = {
-            'video_path': self.video_path,
-            'csv_path': self.data_processor.file_path,
-            'start_frame': self.start_frame,
-            'end_frame': self.end_frame,
-            'shapes': {name: list(polygon.exterior.coords) for name, polygon in self.shape_drawer.shapes.items()},
-            'excluded_body_parts': list(self.excluded_body_parts),
-            'mode': self.track_mode  
-        }
-    
-        self.saved_details.append(details)
-        self.show_saved_details_window()
+        
+        name_popup = tk.Toplevel()
+        name_popup.title("Enter Details Name")
+        name_popup.configure(bg="#19232D")
+        
+        name_label = tk.Label(name_popup, text="Enter details name: ", bg="#19232D", fg="white")
+        name_label.pack(pady=10)
+        name_entry = tk.Entry(name_popup, width=30)
+        name_entry.pack(pady=10)
+        name_entry.configure(bg="white")
+        
+        def on_apply():
+            details_name = name_entry.get()
+            if not name_entry.get().strip():
+                details_name = self.video_path
+                self.custom_messagebox("Details Not Named", "Please enter a name for the saved details", "#19232D", "white")
+                return 
+            
+            details = {
+                'name': details_name,
+                'video_path': self.video_path,
+                'csv_path': self.data_processor.file_path,
+                'start_frame': self.start_frame,
+                'end_frame': self.end_frame,
+                'shapes': {name: list(polygon.exterior.coords) for name, polygon in self.shape_drawer.shapes.items()},
+                'excluded_body_parts': list(self.excluded_body_parts),
+                'mode': self.track_mode  
+            }
+            
+            self.saved_details.append(details)
+            name_popup.destroy()
+            self.show_saved_details_window()
+        
+        apply_button = self.create_rounded_button(name_popup, 130, 40, 15, "#455364", "white", "Apply", command=on_apply)
+        apply_button.pack(pady=10)
     
     def process_saved_details(self):
         '''
         This function processes all the saved details all at once and can ouput a csv file containing the time spent in each ROI
         '''
         if not self.saved_details:
-            messagebox.showerror("Error", "No details saved to process.")
+            self.custom_messagebox("Error", "No details saved to process.", "#19232D", "white")
             return
     
         results = []
@@ -563,10 +597,11 @@ class Application:
     
             #prepare result for this video
             result = {
+                'details_name': details['name'],
                 'video_file': details['video_path'],
+                'mode': details['mode'],
                 'start_time': start_time,
-                'end_time': end_time,
-                'mode': details['mode']
+                'end_time': end_time
             }
             for shape_name, time in self.shape_drawer.time_counters.items():
                 result[shape_name] = time
@@ -593,17 +628,19 @@ class Application:
         self.saved_details_window = Toplevel(self.root)
         self.saved_details_window.title("Saved Details")
         self.saved_details_window.geometry("300x400")
+        self.saved_details_window.configure(bg="#19232D")
+        #self.saved_details_window.iconbitmap(self.icon_path)
         center_window(self.saved_details_window, 300, 400)
     
         #create a listbox to display saved details
-        self.saved_details_listbox = Listbox(self.saved_details_window, selectmode=MULTIPLE)
+        self.saved_details_listbox = Listbox(self.saved_details_window, selectmode=MULTIPLE, bg="#455364", fg="white", bd=0, highlightthickness=0)
         self.saved_details_listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
     
         #add saved details to the listbox
         self.update_saved_details_listbox()
     
         #add a delete button
-        delete_button = tk.Button(self.saved_details_window, text="Delete Selected", command=self.delete_selected_details)
+        delete_button = self.create_rounded_button(self.saved_details_window, 130, 40, 15, "#455364", "white", "Delete Detail", command=self.delete_selected_details)
         delete_button.pack(pady=10)
     
     def update_saved_details_listbox(self):
@@ -615,7 +652,8 @@ class Application:
             video_name = os.path.basename(detail['video_path'])
             start_time = self.frame_to_time(detail['start_frame'])
             end_time = self.frame_to_time(detail['end_frame'])
-            self.saved_details_listbox.insert(tk.END, f"Detail {i + 1}: {video_name}, {start_time} - {end_time}")
+            detail_name = detail['name']
+            self.saved_details_listbox.insert(tk.END, f"{i+1}.) {detail_name}: {video_name}, {start_time} - {end_time}")
     
     def delete_selected_details(self):
         '''
@@ -623,9 +661,9 @@ class Application:
         '''
         selected_indices = self.saved_details_listbox.curselection()
         if not selected_indices:
-            messagebox.showwarning("Warning", "No details selected to delete.")
+            self.custom_messagebox("Warning", "No details selected to delete.", bg_color="#19232D", fg_color="white")
             return
-    
+        
         for index in reversed(selected_indices):
             del self.saved_details[index]
         self.update_saved_details_listbox()
@@ -634,7 +672,7 @@ class Application:
         msg_box = Toplevel()
         msg_box.title(title)
         msg_box.configure(bg=bg_color)
-    
+        msg_box.iconbitmap(self.icon_path)
         #center the window
         window_width = 300
         window_height = 150

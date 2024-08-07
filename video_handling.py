@@ -47,7 +47,8 @@ class VideoHandler:
         #define the window title and bring it to the top level
         self.app.selector_window = Toplevel(self.app.root, bg='#19232D')
         self.app.selector_window.title("Select Frame")
-
+        self.app.selector_window.iconbitmap(self.app.icon_path)
+        
         #style for the ttk Scale
         style = ttk.Style()
         style.theme_use('clam')  # Use 'clam' theme for more customization options
@@ -130,6 +131,7 @@ class VideoHandler:
         self.app.segment_window = Toplevel(self.app.root, bg='#19232D')
         self.app.segment_window.title("Select Segment")
         self.app.segment_window.withdraw()
+        self.app.segment_window.iconbitmap(self.app.icon_path)
 
         #style for the ttk Scale
         style = ttk.Style()
@@ -295,8 +297,22 @@ class VideoHandler:
         '''
         self.app.start_frame = self.app.start_frame_slider.get()
         self.app.end_frame = self.app.end_frame_slider.get()
+        start_seconds = self.app.frame_to_time(self.app.start_frame)
+        end_seconds = self.app.frame_to_time(self.app.end_frame)
         if self.app.start_frame >= self.app.end_frame:
             print("Error: Start frame must be less than end frame.")
             return
         print(f"Selected segment from frame {self.app.start_frame} to frame {self.app.end_frame}.")
         self.app.segment_window.destroy()
+        self.app.custom_messagebox("Segment Selected", f"Selected segment in frames:\n{self.app.start_frame} - {self.app.end_frame}.\n Segment in Seconds:\n {start_seconds} - {end_seconds} ", "#19232D", "white")
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

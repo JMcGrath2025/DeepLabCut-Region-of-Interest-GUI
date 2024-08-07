@@ -10,7 +10,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+'''
+Add a way to plot only points that appear within a specific region of interest
 
+'''
 
 class DataProcessor:
     '''
