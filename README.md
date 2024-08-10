@@ -3,9 +3,10 @@
 
 # DeepLabCut-Region-of-Interest-GUI
 
-This is a GUI based program used to interpret tracking data from DeepLabCut. This program tells the amount of time an animal or object being tracked through DeepLabCut spends in a particular region of interest in the video. This program can drastically lessen the workload of manually tracking the time spent in a particular area of the video. This program also can help introduce a more objective and precise measurment of time an animal spends in a region of interest through using the DeepLabCut tracking data. The main goal of this program is to make it easier for people in research settings with little technical kno
+This is a GUI based program used to interpret tracking data from DeepLabCut. This program tells the amount of time an animal or object being tracked through DeepLabCut spends in a particular region of interest in the video. This program can drastically lessen the workload of manually tracking the time spent in a particular area of the video. This program also can help introduce a more objective and precise measurment of time an animal spends in a region of interest through using the DeepLabCut tracking data.
 
-![MainScreen](https://github.com/user-attachments/assets/0e057749-106e-46db-beea-a4d5a11da6ed)
+![HomeGif](https://github.com/user-attachments/assets/7fb51dee-353a-45db-8319-b2cd3fce7b6a)
+
 
 ## Table of Contents
 - [Installation](#installation)
@@ -41,6 +42,7 @@ This program also allows the user to plot data using MatLab plots to display the
 ### Pathing
 
 This feature allows you to load the video and tracking data file and press "Pathing" to see a visual of the path an animal takes during the video. 
+
 ![pathing](https://github.com/user-attachments/assets/28480b56-b5e5-4e4b-b71b-0c2277a34372)
 
 ### Batch Processing
@@ -75,58 +77,78 @@ This program is very easy to use but there are a few different ways to use it.
 
 This is the main function of this program and this is the workflow of using it.
 
-1. Load the video you want to analyze by using the "Open Video" button (.mp4, .mov, .avi).
-2. Use the scroll bar on the bottom to select a frame to load onto the canvas.
-   - Make sure that it is a clear view of the regions of interest you want to label.
-   ![OpenVideo](https://github.com/user-attachments/assets/1a95a8f4-31bf-42ab-bdbd-ec5db46b05dd)
+#### 1. Load the video you want to analyze by using the "Load Video" button (.mp4, .mov, .avi).
+#### 2. Use the scroll bar on the bottom to select a clear frame to load onto the canvas.
 
-3. Load the CSV or h5 tracking file from DeepLabCut using the "Open CSV" button.
-   ![OpenCSV](https://github.com/user-attachments/assets/19197a77-c271-4fbd-8e31-ae4e67080289)
+   ![load_video](https://github.com/user-attachments/assets/891e34c0-ca5f-47c8-bb9d-a3660c12d602)
 
-4. Then, to draw and label the ROI, you need to do a few different things:
+#### 3. Load the CSV or h5 tracking file from DeepLabCut using the "Load Tracking" button.
+
+   ![load_tracking](https://github.com/user-attachments/assets/bcd07c86-4288-420b-9847-f11ba0785098)
+
+#### 4. Then, to draw and label the ROI, you need to do a few different things:
    1. Use left-click to plot a point over the video frame (plotting two points will draw a line between them).
-   2. Use right-click to complete the region of interest (Once at least three points are plotted, right-click will complete the shape).
-   3. After using right-click, a popup will show asking you to name the region of interest.
-   4. If a different video has the same ROIs and was filmed at the same angle, you can save the ROI to use again by using the "Save ROI" button.
-   ![Draw Shapes](https://github.com/user-attachments/assets/37176c95-da2d-4c94-95ed-98e915cd9f15)
+   2. (optional) Hold "shift" to align the mouse directly across from last point
+   3. Use right-click to complete the region of interest (Once at least three points are plotted, right-click will complete the shape).
+   4. (optional) Press "space" to complete a perfect square or rectangle
+   5. After using completing the ROI, a popup will show asking you to name the region of interest.
+   6. If a different video has the same ROIs and was filmed at the same angle, you can save the ROI to use again by using the "Save ROI" button.
+      
+   ![draw_roi](https://github.com/user-attachments/assets/02301d54-51d0-49b1-9ee2-5308118afa8f)
 
-5. In the case that a user already has defined the ROIs, you can load them with the "Load ROI" button to display them on the canvas.
-6. Select the segment of the video to analyze (if no segment is selected, it will analyze the whole video).
-   ![Video Segment](https://github.com/user-attachments/assets/c21a2e0e-54c0-4775-a221-e4a55acabe53)
+#### 7. In the case that a user already has defined the ROIs, you can load them with the "Load ROI" button to display them on the canvas.
 
-7. Switch the mode of the program to the desired mode that you would like to analyze in:
-   
-   A. Percentage Mode:
-   
-      1. Percentage mode will be the default mode selected when first loading up the program.
-      2. If the program was switched to a different mode, click "Percentage Mode" to switch back to this mode.
-      3. Press the "Change Percent" button to change the percentage of body parts that must appear in the region of interest before it starts counting the animal as appearing in the region of interest.
-      4. Exclude any body parts that you would like to not analyze using the "Exclude Body Parts" button.
-         ![Exclude](https://github.com/user-attachments/assets/103b7e2a-4eba-440f-bede-ceeb0fe1dbe7)
+   ![load_roi](https://github.com/user-attachments/assets/8d968c32-0451-4576-847e-d1e1d9e19136)
 
-   B. Body Part Mode:
+#### 8. Select the segment of the video to analyze (if no segment is selected, it will analyze the whole video).
+
+   ![select_segment](https://github.com/user-attachments/assets/143f0752-c080-4556-9097-557028976eb4)
+
+#### 9. Switch the mode of the program to the desired mode that you would like to analyze in by pressing the "Percentage Mode", "Any Body Part Mode", and "Body Part Mode"
+
+   Percentage Mode:
    
-      1. Switch to body part mode by pressing the "Body Part Mode" button.
-      2. When prompted, click the specific body part that you would like to track.
+   1. Percentage mode will be the default mode selected when first loading up the program.
+   2. If the program was switched to a different mode, click "Percentage Mode" to switch back to this mode.
+   3. Press the "Change Percent" button to change the percentage of body parts that must appear in the region of interest before it starts counting the animal as appearing in the region of interest.
+   4. Exclude any body parts that you would like to not analyze using the "Exclude Body Parts" button.
+      
+   ![exclude_body_parts](https://github.com/user-attachments/assets/bfa46a75-5455-4227-a265-e0524061e17a)
+   6. Process the video by pressing the "Process" button.
+      
+   ![process_Percentagemode](https://github.com/user-attachments/assets/2b319dc9-9bc9-4efb-af93-18412c08d601)
+
+
+   Body Part Mode:
+   
+   1. Switch to body part mode by pressing the "Body Part Mode" button.
+   2. When prompted, click the specific body part that you would like to track.
+   3. Process the video by pressing the "Process" button.
+      
+   ![process_body_part_mode](https://github.com/user-attachments/assets/89f99387-faa9-43e8-b27e-371c81fc8be9)
         
-   C. Any Part Mode:
+   Any Part Mode:
 
-      1. Switch to this mode by pressing "Any Part Mode".
-      2. Exclude any body parts that you do not want to analyze.
+   1. Switch to this mode by pressing "Any Part Mode".
+   2. Exclude any body parts that you do not want to analyze.
+   3. Process the video by pressing the "Process" button.
+      
+   ![process_any_part_mode](https://github.com/user-attachments/assets/0266f08a-2a06-4cbc-9bd0-16edbddfb602)
         
-9. Once you have selected all the details and the mode that will be used, there are two different ways to start processing:
-   
-   A. Pressing the "Process" button:
-      1. Once you have all the details selected, you can press the "Process" button to get the output from the current video only.
-         ![Process single](https://github.com/user-attachments/assets/ed594e51-bf9c-4149-bf8b-cb48f67138c5)
+#### 10. Batch Processing:
+   1. Select different segments from the same video or from different videos, exclude body parts, and select the mode for processing.
+   2. Click the "Save Details" button to bring the details popup.
+      
+   ![proccessing details](https://github.com/user-attachments/assets/01170368-84c4-4386-9eb0-b0ff399d93fa)
+      
+   4. (optional) Delete any details that do not need to be processed
+   5. Click "Process Details".
+   6. Once the processing is finished save to a csv file.
+      
+   ![process details](https://github.com/user-attachments/assets/664cdcff-1382-4e1f-a2ec-b408452a1c36)
 
-   B. Saving the details then processing a batch of details at once:
-      1. Once the details are selected and it is ready to be processed, click the "Save Details" button.
-      2. A popup will appear that will show the list of videos and segments of videos to be processed.
-      3. You can use the "Delete" button to select a set of details and delete them from the list so they do not get processed.
-      4. Then click "Process Details" to process the whole batch of details.
-      5. Save the output to a CSV file using the file dialog popup.
-         ![Process Multiple](https://github.com/user-attachments/assets/6fe435f1-881c-48ec-99ce-e7ac8697ac2a)
+
+   
 
 ### Plotting
 
@@ -144,6 +166,9 @@ This part of the program can show a graph very quickly using the details selecte
    C. Select "Zoom In" to zoom in on the plotted data on the video (Zoom Radius is the radius from the middle of the points)
 5. Click on "Apply" to see the plot popup window
 6. Click download to download a picture of the plot
+   
+![plotting](https://github.com/user-attachments/assets/45d0cb5d-b597-4d44-81ac-afb98e390bbd)
+   
 
 ### Pathing
 
@@ -156,6 +181,9 @@ This part of the program is simply a way to show the path an animal takes using 
 5. Use the "D" key to move the move the slideshow forward
 6. Use the "A" key to move the slideshow backwards
 7. Use the space bar to pause the slideshow
+
+![pathing](https://github.com/user-attachments/assets/28480b56-b5e5-4e4b-b71b-0c2277a34372)
+
 
 
 
