@@ -39,6 +39,7 @@ class VideoHandler:
             self.app.start_frame = 0
             #end frame is the total frames - 1
             self.app.end_frame = self.app.total_frames - 1
+            self.app.video_loaded = True
             
     def open_frame_selector(self):
         '''

@@ -4,18 +4,18 @@ from tkinter import ttk
 from shapes import ShapeDrawer
 from processing import DataProcessor
 from video_handling import VideoHandler
-from utils import show_help, progress_bar, update_progress, close_progress_bar, center_window
+from utils import progress_bar, update_progress, close_progress_bar, center_window, open_website, create_custom_entry
 import threading
 import os
 import json
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon
 import pandas as pd
 import cv2
 import ctypes
 
 
 def get_scaling_factor():
-    # Use ctypes to call the necessary Windows APIs
+    #use ctypes to call the necessary Windows APIs
     try:
         awareness = ctypes.c_int()
         ctypes.windll.shcore.SetProcessDpiAwareness(2)  # Set the awareness level
@@ -26,17 +26,18 @@ def get_scaling_factor():
         monitor = ctypes.windll.user32.MonitorFromWindow(ctypes.windll.user32.GetForegroundWindow(), 1)
         ctypes.windll.shcore.GetDpiForMonitor(monitor, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
 
-        scaling_factor = dpi_x.value / 96.0  # Standard DPI is 96
+        scaling_factor = dpi_x.value / 96.0  #standard DPI is 96
         return scaling_factor
     except Exception as e:
         print(f"Error obtaining scaling factor: {e}")
-        return 1.0  # Default to 1.0 if unable to get scaling factor
+        return 1.0  #default to normal scaling if the scaling factor is not available
     
 class Application:
     def __init__(self, root):
         #set root and title
         self.root = root
         self.root.title("Region of Interest Tool")
+        
         
         #construct the path to the icon file
         self.icon_path = os.path.join('assets', 'icon.ico')
@@ -121,6 +122,7 @@ class Application:
         self.track_mode = 'majority'  #starting mode
         self.specific_body_part = None  #body part to track
         self.csv_loaded = False  #is the csv file loaded
+        self.video_loaded = False
         self.saved_details = []  #the details to save if processing multiple videos at once
         self.previous_excluded_body_parts = set()  #previously excluded body parts
         self.excluded_body_parts = set()
@@ -139,8 +141,10 @@ class Application:
         self.bind_events()  # Bind click events
     
     
-    #set up the labels and button
     def setup_widgets(self):
+        '''
+        Setup the buttons and labels
+        '''
         #set up bottom center frame
         self.time_label = tk.Label(self.center_frame, text="Time inside Regions Of Interest:", bg="#19232D", fg='white')
         self.time_label.grid(row=0, column=0, padx=5, pady=5, sticky="n")
@@ -148,7 +152,7 @@ class Application:
         self.body_parts_label = tk.Label(self.center_frame, text="Tracking Body Parts:\nNone", wraplength=175, bg="#19232D", fg='white')
         self.body_parts_label.grid(row=3, column=0, padx=5, pady=5, sticky="n")
         
-        self.plot_button = self.create_rounded_button(self.center_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Plot", command=self.plot)
+        self.plot_button = self.create_rounded_button(self.center_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Plot", command=self.plot_type_popup)
         self.plot_button.grid(row=5, column=0, padx=5, pady=5, sticky="n")
         
         self.path_button = self.create_rounded_button(self.center_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Pathing", command=self.create_pathing_slideshow)
@@ -171,10 +175,10 @@ class Application:
         self.help_button.grid(row=0, column=0, padx=5, pady=5, sticky="n")
     
         #set up bottom right frame
-        self.open_video_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Open Video", command=self.open_video)
+        self.open_video_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Load Video", command=self.open_video)
         self.open_video_button.grid(row=0, column=0, padx=5, pady=5, sticky="n")
     
-        self.open_csv_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Open CSV", command=self.open_csv)
+        self.open_csv_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Load Tracking", command=self.open_csv)
         self.open_csv_button.grid(row=1, column=0, padx=5, pady=5, sticky="n")
     
         self.analyze_segment_button = self.create_rounded_button(self.right_frame, width=130, height=40, corner_radius=15, bg_color="#455364", fg_color="white", text="Get Video Segment", command=self.open_segment_selector)
@@ -228,11 +232,12 @@ class Application:
         color = [int(x * 255) for x in color]
         return "#%02x%02x%02x" % tuple(color)
     
-    #function to create a rounded button
+    
     def create_rounded_button(self, parent, width, height, corner_radius, bg_color, fg_color, text, command=None):
         '''
         This function creates a button with rounded corners
         '''
+        
         button = tk.Canvas(parent, borderwidth=0, highlightthickness=0, background=parent["background"],
                            width=width, height=height)
         
@@ -243,34 +248,38 @@ class Application:
             '''
             This function creates the shapes of the rounded buttons
             '''
-            canvas.delete("all")  # Clear the canvas
-            if corner_radius > height/2:
-                corner_radius = height/2
-            if corner_radius > width/2:
-                corner_radius = width/2
-
-            canvas.create_arc((0, 0, corner_radius*2, corner_radius*2), start=90, extent=90, fill=color, outline=color)
-            canvas.create_arc((width-corner_radius*2, 0, width, corner_radius*2), start=0, extent=90, fill=color, outline=color)
-            canvas.create_arc((0, height-corner_radius*2, corner_radius*2, height), start=180, extent=90, fill=color, outline=color)
-            canvas.create_arc((width-corner_radius*2, height-corner_radius*2, width, height), start=270, extent=90, fill=color, outline=color)
-            
-            canvas.create_rectangle((corner_radius, 0, width-corner_radius, height), fill=color, outline=color)
-            canvas.create_rectangle((0, corner_radius, width, height-corner_radius), fill=color, outline=color)
-            
-            canvas.create_text(width/2, height/2, text=text, fill=fg_color, font=("Helvetica", int(height/5)), anchor="center")
+            canvas.delete("all")  # clear the canvas
+            if corner_radius > height / 2:
+                corner_radius = height / 2
+            if corner_radius > width / 2:
+                corner_radius = width / 2
+    
+            canvas.create_arc((0, 0, corner_radius * 2, corner_radius * 2), start=90, extent=90, fill=color, outline=color)
+            canvas.create_arc((width - corner_radius * 2, 0, width, corner_radius * 2), start=0, extent=90, fill=color, outline=color)
+            canvas.create_arc((0, height - corner_radius * 2, corner_radius * 2, height), start=180, extent=90, fill=color, outline=color)
+            canvas.create_arc((width - corner_radius * 2, height - corner_radius * 2, width, height), start=270, extent=90, fill=color, outline=color)
+    
+            canvas.create_rectangle((corner_radius, 0, width - corner_radius, height), fill=color, outline=color)
+            canvas.create_rectangle((0, corner_radius, width, height - corner_radius), fill=color, outline=color)
+    
+            canvas.create_text(width / 2, height / 2, text=text, fill=fg_color, font=("Helvetica", 9), anchor="center")
         
-        def on_press(event):
+        def on_press(event=None):
             draw_button(button, pressed_color, width, height, corner_radius, text, fg_color)
         
-        def on_release(event):
+        def on_release(event=None):
             draw_button(button, released_color, width, height, corner_radius, text, fg_color)
             if command:
                 command()
-
+    
         draw_button(button, released_color, width, height, corner_radius, text, fg_color)
         button.bind("<ButtonPress-1>", on_press)
         button.bind("<ButtonRelease-1>", on_release)
-
+        
+        #bind the Enter key to the button press and release actions
+        parent.bind("<Return>", on_press)
+        parent.bind("<Return>", on_release)
+    
         return button
 
     
@@ -283,6 +292,7 @@ class Application:
         self.canvas.bind("<Motion>", lambda e: self.shape_drawer.mouse_move(e))
         self.root.bind("<Shift_L>", lambda e: self.shape_drawer.shift_press(e))
         self.root.bind("<KeyRelease-Shift_L>", lambda e: self.shape_drawer.shift_release(e))
+        self.root.bind("<space>", self.shape_drawer.complete_rectangle)
         
     
     def switch_to_majority_mode(self):
@@ -322,7 +332,7 @@ class Application:
                 self.update_mode_label()
                 self.update_body_part_label([self.specific_body_part])
             else:
-                messagebox.showerror("Error", "No body part selected.")
+                self.custom_messagebox("Error", "No body part selected.", "#19232D", "white")
 
         #create a frame to hold the body part popup
         frame = tk.Frame(body_part_popup, bg='#19232D')
@@ -389,29 +399,56 @@ class Application:
 
     
     def load_zones(self):
-        '''
-        This function loads the polygons which make up the ROI's from a .json file which contains the points of the polygon
-        '''
-        file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")]) #open the .json file holding polygon data
-        if file_path: 
-            with open(file_path, 'r') as f: #with the file path open
-                self.shape_drawer.shapes = json.load(f)
-            for shape_name, points in self.shape_drawer.shapes.items(): #draw each polygon onto the canvas
-                self.shape_drawer.shapes[shape_name] = Polygon(points)
-                self.canvas.create_polygon(points, outline='black', fill='', width=2, tags='shape')
-            print(f"Zones loaded from {file_path}")
-    
+            '''
+            This function loads the polygons which make up the ROI's from a .json file which contains the points of the polygon.
+            '''
+            file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")]) # Open the .json file holding polygon data
+            if file_path: 
+                with open(file_path, 'r') as f: #load the file
+                    loaded_shapes = json.load(f)
+                    
+                for shape_name, points in loaded_shapes.items():
+                    #check if the points represent a single polygon or multiple polygons
+                    if isinstance(points[0][0], (float, int)): #its a single polygon if the first element is a tuple of coords
+                        loaded_polygon = Polygon(points)
+                    else: #multipolygon
+                        polygons = [Polygon(p) for p in points]
+                        loaded_polygon = MultiPolygon(polygons)
+                    
+                    if shape_name in self.shape_drawer.shapes:
+                        #combine with existing polygon
+                        self.shape_drawer.shapes[shape_name] = self.shape_drawer.shapes[shape_name].union(loaded_polygon)
+                    else:
+                        self.shape_drawer.shapes[shape_name] = loaded_polygon
+                    
+                    #draw the combined or new polygon onto the canvas
+                    for geom in loaded_polygon.geoms if isinstance(loaded_polygon, MultiPolygon) else [loaded_polygon]:
+                        self.canvas.create_polygon(list(geom.exterior.coords), outline=self.shape_drawer.current_color, fill='', width=3, tags='shape')
+                        self.shape_drawer.current_color = self.shape_drawer.get_random_color() 
+                
+                print(f"Zones loaded from {file_path}")
+
     def save_zones(self):
         '''
-        This function saves the ROI's that you draw on the canvas so you can load them later
+        This function saves the ROI's that you draw on the canvas so you can load them later.
         '''
         if not self.shape_drawer.shapes:
             print("No zones to save.")
             return
+        
         #create the file to save the zones to
         file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
-        if file_path: #if the file is specified 
-            shapes_to_save = {name: list(polygon.exterior.coords) for name, polygon in self.shape_drawer.shapes.items()} #save the shapes in a dictionary then save to json file
+        if file_path: #if the file is specified
+            shapes_to_save = {}
+            
+            for name, polygon in self.shape_drawer.shapes.items():
+                if isinstance(polygon, Polygon):
+                    #if it's a single polygon save the exterior coords
+                    shapes_to_save[name] = list(polygon.exterior.coords)
+                elif isinstance(polygon, MultiPolygon):
+                    #if it's a multipolygon save all exterior coords of the contained polygons
+                    shapes_to_save[name] = [list(poly.exterior.coords) for poly in polygon.geoms]
+            
             with open(file_path, 'w') as f:
                 json.dump(shapes_to_save, f)
             print(f"Zones saved to {file_path}")
@@ -421,7 +458,7 @@ class Application:
         This function excludes body parts while processing if there are body parts that could be disregarded
         '''
         if not hasattr(self, 'body_parts') or not self.body_parts:
-            messagebox.showwarning("Warning", "Please load a CSV file first.")  # Load the CSV file first to get body parts
+            self.custom_messagebox("Warning", "Please load a CSV file first.", "#19232D", "white")  #load the CSV file first to get body parts
             return
 
         #bring the excluded window to the top level
@@ -429,6 +466,7 @@ class Application:
         self.exclude_window.title("Exclude Body Parts")
         self.exclude_window.configure(bg='#19232D')
         self.exclude_window.geometry("250x250")
+        self.exclude_window.iconbitmap(self.icon_path)
         center_window(self.exclude_window, 250, 250)
         frame = tk.Frame(self.exclude_window, bg='#19232D')
         frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
@@ -462,17 +500,47 @@ class Application:
         '''
         body_parts_text = "Tracking Body Parts:\n" + ", ".join(body_parts)
         self.body_parts_label.config(text=body_parts_text)
+        
     
     def change_percent(self):
         '''
         This function changes the percent of the body parts that have to appear within the ROI to start the time
         '''
-        percent = simpledialog.askstring("Input", "Enter Percent of Animal in ROI:")
-        percent = float(percent) / 100
-        percentage_text = f"Current Percent:\n{percent * 100:.0f}%"
-        self.percentage_label.config(text=percentage_text)
-        self.percent = percent
-    
+        
+        #create a custom dialog
+        dialog = tk.Toplevel()
+        dialog.title("Input")
+        dialog.config(bg="#19232D")
+        dialog.geometry("250x175")
+        dialog.iconbitmap(self.icon_path)
+        tk.Label(dialog, text="Enter Percent of Animal in ROI:", bg="#19232D", fg="white").pack(pady=10)
+        entry = tk.Entry(dialog, bg="#455364", fg="white")
+        entry.pack(pady=10)
+        
+        def on_apply():
+            try:
+                #convert the input to an integer
+                percent_value = int(entry.get())
+                
+                #check if it's within the range 0 to 100
+                if 0 <= percent_value <= 100:
+                    percent = percent_value / 100
+                    percentage_text = f"Current Percent:\n{percent * 100:.0f}%"
+                    self.percentage_label.config(text=percentage_text)
+                    self.percent = percent
+                    print(self.percent)
+                    dialog.destroy()
+                else:
+                    self.custom_messagebox("Error", "Invalid Input - Enter an integer between 0 and 100.", "#19232D", "white")
+            
+            except ValueError:
+                #handle the case where the input is not an integer
+                self.custom_messagebox("Error", "Invalid Input - Enter an integer between 0 and 100.", "#19232D", "white")
+        
+        self.create_rounded_button(dialog, 130, 40, 20, "#455364", "white", "Apply", command=on_apply).pack(pady=10)
+        center_window(dialog, 250, 175)
+        
+        
     def update_zoom_radius(self, *args):
         '''
         This function updates how far to zoom in onto an image when plotting it
@@ -481,11 +549,10 @@ class Application:
             self.zoom_radius = int(self.zoom_radius_value.get())
             print(f"Zoom radius updated to: {self.zoom_radius}")
         except ValueError:
-            # Handle the case where the entered value is not a valid integer
+            #handle the case where the entered value is not a valid integer
             self.zoom_radius = 100
             print(f"Invalid entry. Zoom radius reset to: {self.zoom_radius}")
         
-    
     def clear_shapes(self):
         '''
         This function clears the shapes and the labels
@@ -505,7 +572,7 @@ class Application:
     
     def save_details_and_show(self):
         '''
-        This funciton saves multiple different sets of details to process all at once
+        This function saves multiple different sets of details to process all at once.
         '''
         if not hasattr(self, 'cap') or not hasattr(self, 'data'):
             self.custom_messagebox("Error", "Please load a video and a CSV file first.", "#19232D", "white")
@@ -518,45 +585,54 @@ class Application:
         if not self.shape_drawer.shapes:
             self.custom_messagebox("Error", "Please load or draw ROI's", "#19232D", "white")
             return
-        
+    
         name_popup = tk.Toplevel()
         name_popup.title("Enter Details Name")
         name_popup.configure(bg="#19232D")
-        
+        name_popup.iconbitmap(self.icon_path)
+        name_popup.geometry("250x150")
+    
         name_label = tk.Label(name_popup, text="Enter details name: ", bg="#19232D", fg="white")
         name_label.pack(pady=10)
-        name_entry = tk.Entry(name_popup, width=30)
+        name_entry = tk.Entry(name_popup, width=25)
         name_entry.pack(pady=10)
-        name_entry.configure(bg="white")
-        
+        name_entry.configure(bg="#455364", fg="white")
+    
         def on_apply():
-            details_name = name_entry.get()
-            if not name_entry.get().strip():
-                details_name = self.video_path
+            details_name = name_entry.get().strip()
+            if not details_name:
                 self.custom_messagebox("Details Not Named", "Please enter a name for the saved details", "#19232D", "white")
                 return 
-            
+    
             details = {
                 'name': details_name,
                 'video_path': self.video_path,
                 'csv_path': self.data_processor.file_path,
                 'start_frame': self.start_frame,
                 'end_frame': self.end_frame,
-                'shapes': {name: list(polygon.exterior.coords) for name, polygon in self.shape_drawer.shapes.items()},
+                'shapes': {
+                    name: (
+                        [list(polygon.exterior.coords) for polygon in shape.geoms]
+                        if isinstance(shape, MultiPolygon)
+                        else list(shape.exterior.coords)
+                    )
+                    for name, shape in self.shape_drawer.shapes.items()
+                },
                 'excluded_body_parts': list(self.excluded_body_parts),
                 'mode': self.track_mode  
             }
-            
+    
             self.saved_details.append(details)
             name_popup.destroy()
             self.show_saved_details_window()
-        
+    
         apply_button = self.create_rounded_button(name_popup, 130, 40, 15, "#455364", "white", "Apply", command=on_apply)
-        apply_button.pack(pady=10)
+        apply_button.pack(pady=10, padx=20)
+        center_window(name_popup, 250, 150)
     
     def process_saved_details(self):
         '''
-        This function processes all the saved details all at once and can ouput a csv file containing the time spent in each ROI
+        This function processes all the saved details all at once and can output a CSV file containing the time spent in each ROI.
         '''
         if not self.saved_details:
             self.custom_messagebox("Error", "No details saved to process.", "#19232D", "white")
@@ -584,7 +660,15 @@ class Application:
             self.end_frame = details['end_frame']
     
             #load ROIs
-            self.shape_drawer.shapes = {name: Polygon(points) for name, points in details['shapes'].items()}
+            self.shape_drawer.shapes = {}
+            for name, points in details['shapes'].items():
+                if isinstance(points[0][0], (float, int)):
+                    #single polygon
+                    self.shape_drawer.shapes[name] = Polygon(points)
+                else:
+                    #multipolygon (ROIs with same names)
+                    self.shape_drawer.shapes[name] = MultiPolygon([Polygon(p) for p in points])
+    
             self.excluded_body_parts = set(details['excluded_body_parts'])
     
             #process each video segment
@@ -613,7 +697,7 @@ class Application:
             results_file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
             if results_file_path:
                 results_df.to_csv(results_file_path, index=False)
-                messagebox.showinfo("Success", f"Results saved to {results_file_path}.")
+                self.custom_messagebox("Success", f"Results saved to {results_file_path}.", "#19232D", "white")
                 
     def show_saved_details_window(self):
         '''
@@ -629,6 +713,7 @@ class Application:
         self.saved_details_window.title("Saved Details")
         self.saved_details_window.geometry("300x400")
         self.saved_details_window.configure(bg="#19232D")
+        self.saved_details_window.iconbitmap(self.icon_path)
         #self.saved_details_window.iconbitmap(self.icon_path)
         center_window(self.saved_details_window, 300, 400)
     
@@ -669,10 +754,15 @@ class Application:
         self.update_saved_details_listbox()
     
     def custom_messagebox(self, title, message, bg_color, fg_color):
+        '''
+        This function creates a custom messagebox that can be styled unlike a simple messagebox
+        '''
         msg_box = Toplevel()
         msg_box.title(title)
         msg_box.configure(bg=bg_color)
         msg_box.iconbitmap(self.icon_path)
+        msg_box.lift()
+        msg_box.focus_force()
         #center the window
         window_width = 300
         window_height = 150
@@ -690,6 +780,198 @@ class Application:
         ok_button = self.create_rounded_button(msg_box, width=130, height=40, corner_radius=15, bg_color='#455364', fg_color='white', text="OK", command=close_messagebox)
         ok_button.pack()
         
+    def show_help(self):
+
+        
+        help_window = Toplevel(self.root)
+        help_window.title("Help")
+        help_window.configure(bg="#19232D")
+        help_window.iconbitmap(self.icon_path)
+
+        def show_plotting_instructions():
+            instructions_window = Toplevel(help_window)
+            instructions_window.title("Step-by-Step Plotting Instructions")
+            instructions_window.configure(bg="#19232D")
+            instructions_window.iconbitmap(self.icon_path)
+            instructions_text = """
+            Plotting Graphs:
+                How to plot the tracking data in different ways
+                1) Load the video using the "Load Video" button
+                2) Load the CSV file by using the "Load CSV" button
+                3) (Optional) Select a video segment from the loaded video
+                4) (Optional) Draw or load regions of interest
+                5) Press the "Plot" button
+                6) Select the body part you would like to plot and press "Select"
+                7) (Optional) Click checkboxes to manipulate how the data will be plotted
+                    A) "Show Bounding Box" will show an outline that encapsulates all the plotted points
+                    B) "Show ROIs" will show the regions of interest overtop of the plot
+                    C) "Show Area Under Curve" will show the area under curve displayed on the graph
+                    D) "Square Graph" will show the graph displayed in equal aspect ratio instead of landscape
+                    E) "Plot Over Video" will show the plot over the last frame in the selected segment
+                    F) "Zoom In" will show a zoomed in version of the graph
+                    G) "Zoom In Radius" entry box shows the radius around the center point of the tracking data
+                8) After selecting checkboxes click "Apply"
+                9) (Optional) Click "Download" and save plot
+            """
+            
+            instructions_label = tk.Label(instructions_window, text=instructions_text, justify=tk.LEFT, bg="#19232D", fg="white", font=16)
+            instructions_label.pack(padx=10, pady=10)
+            instructions_window.update_idletasks()  # Ensure the window dimensions are calculated
+            window_width = instructions_window.winfo_width()
+            window_height = instructions_window.winfo_height()
+            center_window(instructions_window, window_width, window_height)
+            
+        
+        def show_pathing_instructions():
+            instructions_window = Toplevel(help_window)
+            instructions_window.title("Step-by-Step Pathing Instructions")
+            instructions_window.configure(bg="#19232D")
+            instructions_window.iconbitmap(self.icon_path)
+            instructions_text = """
+            Pathing Instructions:
+                1) Load video using "Load Video" button
+                2) Load tracking data using "Load CSV" button
+                3) (Optional) Select the video segment using the "Select Segment" button
+                4) Click the "Pathing" button
+                5) Use the "D" key to move forward through the video
+                6) Use the "A" key to move backwards through the video
+                7) Use the "space-bar" to pause the video
+            """
+            pathing_controls_text = """
+            Pathing Controls
+            ===================
+            "D" - moves slideshow towards the end of the video
+            "A" - moves slideshow backwards to the start of the video
+            "Spave-Bar" - pauses the slideshow
+            """
+            pathing_control_label = tk.Label(instructions_window, text=pathing_controls_text, justify=tk.LEFT, bg="#19232D", fg="white", font=16)
+            pathing_control_label.pack(padx=10, pady=(10, 0))
+            instructions_label = tk.Label(instructions_window, text=instructions_text, justify=tk.LEFT, bg="#19232D", fg="white", font=16)
+            instructions_label.pack(padx=10, pady=10)
+            instructions_window.update_idletasks()  # Ensure the window dimensions are calculated
+            window_width = instructions_window.winfo_width()
+            window_height = instructions_window.winfo_height()
+            center_window(instructions_window, window_width, window_height)
+            
+            
+        def show_roi_instructions():
+            instructions_window = Toplevel(help_window)
+            instructions_window.title("Step-by-Step ROI Instructions")
+            instructions_window.configure(bg="#19232D")
+            instructions_window.iconbitmap(self.icon_path)
+            instructions_text = """
+            Drawing Region of Interest:
+                How to draw shapes on the video frame to define the regions of interest
+                1) Open the video using the "Load Video" button
+                2) Select a frame using the popup that has a clear view of the ROI
+                3) Use left click to plot points that will connect with a line
+                4) Use Right Click when finished drawing to complete and name the ROI
+                5) (Optional) Save the ROI to use on other videos that are filmed in the exact same positioning
+                6) Load the ROI using the "Load ROI" button to use a previously saved ROI
+                7) Click the "Clear Shapes" button to clear the shapes if you want to redefine the ROI
+            Process Time Spent in ROI:
+                How to process a single segment of a video at a time
+                1) Load the video to be analyzed using "Load Video"
+                2) Draw new ROI or load ROI using "Load ROI"
+                3) Open the csv file that corresponds with the file you loaded using "Load CSV"
+                4) Click "Get Video Segment" and change the start frame and end frame to change the portion of the video to be analyzed
+                There are a few different ways to determine when an animal enters into the ROI
+                Percentage Mode:(default mode)
+                    1) By default it is set to detect when at least 50% of the body parts are in the ROI
+                    2) Click "Change Percentage to change the percent of the animal that needs to be in the ROI
+                    3) You can also exlude body parts from the tracking data that may skew the results 
+                       for example you may exlude the tail of a mouse or if you only wanted to track a specific
+                       group of body parts.
+                    4) Then click "Start Processing"
+                    5) Look at the results
+                Any Body Part Mode:
+                    1) Click "Any Body Part" to change the mode
+                    2) Start processing to get the data from when any body part crosses into the ROI
+                Body Part Mode:
+                    1) Click "Body Part Mode"
+                    2) Click "Start Processing" to get the data from when a specific body part crosses into the ROI
+                5) To analyze a different video click "Load Video" load a new video to automatically clear the old ROI
+                6) Repeat steps to analyze new videos
+            Batch Processing:
+                How to process multiple different details across the same video or multiple different videos
+                1) Follow the steps for processing time spent in an ROI normally but do not press the "Start Processing"
+                2) Instead of pressing "Start Processing" click save details
+                3) Select and delete any details to not be processed using the "Delete" button
+                4) Once all details are selected across all videos to be processed press "Process Saved Details"
+                5) Once done processing all details save the csv file with all of the data
+            """
+            controls_text = """
+            ROI Drawing
+            ==============
+            "Left-Click" - plots a point on the canvas
+            "Left-Shift-Hold" - create straight line between points
+            "Right-Click" - completes shape
+            "Space-Bar" - plots 4th point to make perfect rectangle
+            """
+            roi_controls_label = tk.Label(instructions_window, text=controls_text, justify=tk.LEFT, bg="#19232D", fg="white", font=16)
+            roi_controls_label.pack(padx=10, pady=(10,0))
+            instructions_label = tk.Label(instructions_window, text=instructions_text, justify=tk.LEFT, bg="#19232D", fg="white", font=16)
+            instructions_label.pack(padx=10, pady=10)
+            instructions_window.update_idletasks()  # Ensure the window dimensions are calculated
+            window_width = instructions_window.winfo_width()
+            window_height = instructions_window.winfo_height()
+            center_window(instructions_window, window_width, window_height)
+            
+        #controls_label = tk.Label(help_window, text=controls_text, anchor="center", justify="left", bg="#19232D", fg="white", font=12)
+        #controls_label.pack(pady=(10, 5), padx=10, fill=tk.BOTH, expand=True)
+            
+        roi_button = self.create_rounded_button(help_window, 180, 40, 15, "#455364", "white", "Region Of Interest Instructions", command=show_roi_instructions)
+        roi_button.pack(padx=10, pady=(10, 10))
+        plotting_button = self.create_rounded_button(help_window, 180, 40, 15, "#455364", "white", "Plotting Instructions", command=show_plotting_instructions)
+        plotting_button.pack(padx=10, pady=(10, 10))
+        
+        #pathing_control_label = tk.Label(help_window, text=pathing_controls_text, anchor="center", justify="left", bg="#19232D", fg="white", font=12)
+        #pathing_control_label.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+        
+        pathing_button = self.create_rounded_button(help_window, 180, 40, 15, "#455364", "white", "Pathing Instructions", command=show_pathing_instructions)
+        pathing_button.pack(padx=10, pady=(10, 10))
+        
+        link_label = tk.Label(help_window, text="Intructions with pictures on Github and video tutorial on Youtube", bg="#19232D", fg="white", font=12)
+        link_label.pack(padx=10, pady=10)
+        github_button = self.create_rounded_button(help_window, 180, 40, 15, "#455364", "white", "GitHub", command=lambda: open_website("https://github.com/JMcGrath2025/DeepLabCut-Region-of-Interest-GUI/blob/master/README.md"))
+        github_button.pack(padx=10, pady=(10, 10))
+        yt_button = self.create_rounded_button(help_window, 180, 40, 15, "#455364", "white", "YouTube")
+        yt_button.pack(padx=10, pady=(10, 10))
+        
+        help_window.update_idletasks()  #ensure the window dimensions are calculated
+        window_width = help_window.winfo_width()
+        window_height = help_window.winfo_height()
+        center_window(help_window, window_width, window_height)
+    
+    def plot_type_popup(self):
+        '''
+        This function creates a popup that decides which way the data will be plotted
+        '''
+        
+        #create the popup window
+        popup = Toplevel()
+        popup.title("Plot Type")
+        popup.configure(bg="#19232D")
+        popup.iconbitmap(self.icon_path)
+        popup.geometry("300x200")
+        
+        #center window
+        center_window(popup, 300, 200)
+        
+        
+        if self.video_loaded and self.csv_loaded:
+            #create a label
+            tk.Label(popup, text="Select Plotting Option", bg="#19232D", fg="white", font=12).pack(pady=5)
+            #create buttons for each type of plot
+            self.create_rounded_button(popup, 130, 40, 20, "#455364", "white", "Plot Location", command=self.plot).pack(pady=5)            
+            self.create_rounded_button(popup, 130, 40, 20, "#455364", "white", "Plot Speed", command=self.data_processor.plot_speed).pack(pady=5)           
+            self.create_rounded_button(popup, 130, 40, 20, "#455364", "white", "Plot Velocity", command=self.data_processor.plot_velocity).pack(pady=5)
+            
+        else: #if the tracking file and video file are not loaded show the message box 
+            self.custom_messagebox("Error", "Please load video and tracking file.", "#19232D", "white")
+        
+                
+        
     '''
     These are getter functions to get functions from other files
     '''
@@ -704,9 +986,6 @@ class Application:
     def close_progress_bar(self):
         #get method to close progress bar
         close_progress_bar(self)
-    
-    def show_help(self):
-        show_help(self.root)    
         
     def open_video(self):
         #open video button from video handler object for the button
@@ -725,4 +1004,7 @@ class Application:
     def open_segment_selector(self):
         #get the segment selector for the button
         self.video_handler.open_segment_selector()
+        
+        
+
 
