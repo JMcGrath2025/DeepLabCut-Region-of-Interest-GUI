@@ -96,4 +96,9 @@ bin/
 *.tar.gz
 *.iso
 *.jar
-*.spec.gitattributes
+
+# Ignore .spec files
+*.spec
+
+# Ignore .gitattributes file
+.gitattributes
